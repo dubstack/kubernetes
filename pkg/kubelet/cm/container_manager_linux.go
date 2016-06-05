@@ -37,6 +37,7 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/resource"
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
+	qosutil "k8s.io/kubernetes/pkg/kubelet/qos/util"
 	"k8s.io/kubernetes/pkg/util"
 	utilerrors "k8s.io/kubernetes/pkg/util/errors"
 	"k8s.io/kubernetes/pkg/util/mount"
@@ -45,6 +46,7 @@ import (
 	"k8s.io/kubernetes/pkg/util/sets"
 	utilsysctl "k8s.io/kubernetes/pkg/util/sysctl"
 	"k8s.io/kubernetes/pkg/util/wait"
+	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/predicates"
 )
 
 const (
@@ -227,7 +229,121 @@ func setupKernelTunables(option KernelTunableBehavior) error {
 	return utilerrors.NewAggregate(errList)
 }
 
+const (
+	GuaranteedQoSCgroupName = "G"
+	BurstableQoSCgroupName  = "Bu"
+	BestEffortQoSCgroupName = "BE"
+	systemd                 = false
+)
+
+func createCgroup(c *configs.Cgroup) error {
+	cm := NewCgroupManagerFs(c)
+	if systemd {
+		// call made to the systemd cgroup manager
+		// cm := NewCgroupManagerSystemd(cg)
+	}
+	err := cm.Create()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func updateCgroup(c *configs.Cgroup) error {
+	cm := NewCgroupManagerFs(c)
+	if systemd {
+		// call made to the systemd cgroup manager
+		// cm := NewCgroupManagerSystemd(cg)
+	}
+	err := cm.Update(c)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func createTopLevelCgroups() error {
+	qosClasses := [3]string{GuaranteedQoSCgroupName, BurstableQoSCgroupName, BestEffortQoSCgroupName}
+	for _, cgroupName := range qosClasses {
+		c := &configs.Cgroup{
+			Name:      cgroupName,
+			Parent:    "/",
+			Resources: &configs.Resources{},
+		}
+		if err := createCgroup(c); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func getParentCgroupName(pod *api.Pod) string {
+	podQos := qosutil.GetPodQos(pod)
+	parentCgroupName := ""
+	switch podQos {
+	case qosutil.Guaranteed:
+		parentCgroupName = GuaranteedQoSCgroupName
+	case qosutil.Burstable:
+		parentCgroupName = BurstableQoSCgroupName
+	case qosutil.BestEffort:
+		parentCgroupName = BestEffortQoSCgroupName
+	}
+	return parentCgroupName
+}
+
+func getPodResourceRequest(pod *api.Pod) *configs.Resources {
+	podRequest := predicates.GetResourceRequest(pod)
+	resources := &configs.Resources{
+		Memory:   podRequest.Memory,
+		CpuQuota: podRequest.MilliCPU,
+	}
+	return resources
+}
+
+func updateQosCgroupParameters(podResources *configs.Resources, cgroupName string) error {
+	// How to find the current resource limts of the Parent Cgroup
+	var memory int64
+	var cpu int64
+	resources := &configs.Resources{
+		Memory:    memory,
+		CpuShares: cpu,
+	}
+	c := &configs.Cgroup{
+		Name:      cgroupName,
+		Parent:    "/",
+		Resources: resources,
+	}
+	if err := updateCgroup(c); err != nil {
+		return err
+	}
+	return nil
+}
+
+func CreatePodCgroup(pod *api.Pod) error {
+	parentCgroupName := getParentCgroupName(pod)
+	absoluteParentCgroupName := "/" + parentCgroupName
+
+	podResources := getPodResourceRequest(pod)
+	c := &configs.Cgroup{
+		Name:      string(pod.UID),
+		Parent:    absoluteParentCgroupName,
+		Resources: podResources,
+	}
+
+	if err := createCgroup(c); err != nil {
+		return err
+	}
+	// if err := updateQosCgroupParameters(podResources, parentCgroupName); err!=nil{
+	// 	return err
+	// }
+	return nil
+}
+
 func (cm *containerManagerImpl) setupNode() error {
+	if err := createTopLevelCgroups(); err != nil {
+		return err
+	}
+
 	f, err := validateSystemRequirements(cm.mountUtil)
 	if err != nil {
 		return err
