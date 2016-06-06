@@ -575,7 +575,7 @@ func SimpleKubelet(client *clientset.Clientset,
 		EnablePodCgroups:             false,
 		EnableServer:                 true,
 		FileCheckFrequency:           fileCheckFrequency,
-		GuaranteedOosRoot:            true,
+		GuaranteedQosRoot:            true,
 		// Since this kubelet runs with --configure-cbr0=false, it needs to use
 		// hairpin-veth to allow hairpin packets. Note that this deviates from
 		// what the "real" kubelet currently does, because there's no way to

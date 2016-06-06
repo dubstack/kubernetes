@@ -261,10 +261,10 @@ type KubeletConfiguration struct {
 	// Enable Qos based Cgroup hieracrchy: top level cgroups for Qos Classes
 	// And all pods are broguht up under a top level Qos cgroup
 	// based on the Qos class they belong to.
-	EnablePodCgroups string `json:"enablePodCgroups,omitempty"`
+	EnablePodCgroups bool `json:"enablePodCgroups,omitempty"`
 	// Have all the Guaranteed pod cgroups directly under the root of
 	// the cgroup hierarchy
-	GuaranteedQosRoot string `json:guaranteedQosRoot,omitempty`
+	GuaranteedQosRoot bool `json:guaranteedQosRoot,omitempty`
 	// cgroupRoot is the root cgroup to use for pods. This is handled by the
 	// container runtime on a best effort basis.
 	CgroupRoot string `json:"cgroupRoot,omitempty"`
