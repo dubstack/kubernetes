@@ -218,10 +218,12 @@ func UnsecuredKubeletConfig(s *options.KubeletServer) (*KubeletConfig, error) {
 		EnableControllerAttachDetach: s.EnableControllerAttachDetach,
 		EnableCustomMetrics:          s.EnableCustomMetrics,
 		EnableDebuggingHandlers:      s.EnableDebuggingHandlers,
+		EnablePodCgroups:             s.EnablePodCgroups,
 		EnableServer:                 s.EnableServer,
 		EventBurst:                   int(s.EventBurst),
 		EventRecordQPS:               s.EventRecordQPS,
 		FileCheckFrequency:           s.FileCheckFrequency.Duration,
+		GuaranteedQosRoot:            s.GuaranteedQosRoot,
 		HostnameOverride:             s.HostnameOverride,
 		HostNetworkSources:           hostNetworkSources,
 		HostPIDSources:               hostPIDSources,
@@ -359,10 +361,12 @@ func run(s *options.KubeletServer, kcfg *KubeletConfig) (err error) {
 		}
 
 		kcfg.ContainerManager, err = cm.NewContainerManager(kcfg.Mounter, kcfg.CAdvisorInterface, cm.NodeConfig{
-			RuntimeCgroupsName: kcfg.RuntimeCgroups,
-			SystemCgroupsName:  kcfg.SystemCgroups,
-			KubeletCgroupsName: kcfg.KubeletCgroups,
-			ContainerRuntime:   kcfg.ContainerRuntime,
+			RuntimeCgroupsName:      kcfg.RuntimeCgroups,
+			SystemCgroupsName:       kcfg.SystemCgroups,
+			KubeletCgroupsName:      kcfg.KubeletCgroups,
+			ContainerRuntime:        kcfg.ContainerRuntime,
+			EnablePodCgroups:        kcfg.EnablePodCgroups,
+			GuaranteedQoSCgroupName: kcfg.GuaranteedQosRoot,
 		})
 		if err != nil {
 			return err
@@ -568,8 +572,10 @@ func SimpleKubelet(client *clientset.Clientset,
 		EnableControllerAttachDetach: false,
 		EnableCustomMetrics:          false,
 		EnableDebuggingHandlers:      true,
+		EnablePodCgroups:             false,
 		EnableServer:                 true,
 		FileCheckFrequency:           fileCheckFrequency,
+		GuaranteedOosRoot:            true,
 		// Since this kubelet runs with --configure-cbr0=false, it needs to use
 		// hairpin-veth to allow hairpin packets. Note that this deviates from
 		// what the "real" kubelet currently does, because there's no way to
@@ -789,11 +795,13 @@ type KubeletConfig struct {
 	EnableControllerAttachDetach   bool
 	EnableCustomMetrics            bool
 	EnableDebuggingHandlers        bool
+	EnablePodCgroups               bool
 	EnableServer                   bool
 	EventClient                    *clientset.Clientset
 	EventBurst                     int
 	EventRecordQPS                 float32
 	FileCheckFrequency             time.Duration
+	GuaranteedQosRoot              bool
 	Hostname                       string
 	HostnameOverride               string
 	HostNetworkSources             []string
@@ -920,6 +928,8 @@ func CreateAndInitKubelet(kc *KubeletConfig) (k KubeletBootstrap, pc *config.Pod
 		kc.NodeStatusUpdateFrequency,
 		kc.OSInterface,
 		kc.CgroupRoot,
+		kc.EnablePodCgroups,
+		kc.GuaranteedQosRoot,
 		kc.ContainerRuntime,
 		kc.RktPath,
 		kc.RktAPIEndpoint,

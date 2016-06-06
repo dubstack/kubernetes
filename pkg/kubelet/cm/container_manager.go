@@ -39,10 +39,12 @@ type ContainerManager interface {
 }
 
 type NodeConfig struct {
-	RuntimeCgroupsName string
-	SystemCgroupsName  string
-	KubeletCgroupsName string
-	ContainerRuntime   string
+	RuntimeCgroupsName      string
+	SystemCgroupsName       string
+	KubeletCgroupsName      string
+	ContainerRuntime        string
+	EnablePodCgroups        bool
+	GuaranteedQoSCgroupName bool
 }
 
 type Status struct {
