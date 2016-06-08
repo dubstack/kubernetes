@@ -207,8 +207,8 @@ func NewMainKubelet(
 	nodeStatusUpdateFrequency time.Duration,
 	osInterface kubecontainer.OSInterface,
 	cgroupRoot string,
-	enablePodCgroups bool,
-	guaranteedQosRoot bool,
+	enableQosCgroups bool,
+	guaranteedQosAtRoot bool,
 	containerRuntime string,
 	rktPath string,
 	rktAPIEndpoint string,
@@ -343,8 +343,8 @@ func NewMainKubelet(
 		os:                         osInterface,
 		oomWatcher:                 oomWatcher,
 		cgroupRoot:                 cgroupRoot,
-		enablePodCgroups:           enablePodCgroups,
-		guaranteedQosRoot:          guaranteedQosRoot,
+		enableQosCgroups:           enableQosCgroups,
+		guaranteedQosAtRoot:        guaranteedQosAtRoot,
 		mounter:                    mounter,
 		writer:                     writer,
 		configureCBR0:              configureCBR0,
@@ -727,10 +727,10 @@ type Kubelet struct {
 	cgroupRoot string
 
 	// Fill here
-	enablePodCgroups bool
+	enableQosCgroups bool
 
 	// Fill here
-	guaranteedQosRoot bool
+	guaranteedQosAtRoot bool
 	// Mounter to use for volumes.
 	mounter mount.Interface
 

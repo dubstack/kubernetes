@@ -361,12 +361,12 @@ func run(s *options.KubeletServer, kcfg *KubeletConfig) (err error) {
 		}
 
 		kcfg.ContainerManager, err = cm.NewContainerManager(kcfg.Mounter, kcfg.CAdvisorInterface, cm.NodeConfig{
-			RuntimeCgroupsName:      kcfg.RuntimeCgroups,
-			SystemCgroupsName:       kcfg.SystemCgroups,
-			KubeletCgroupsName:      kcfg.KubeletCgroups,
-			ContainerRuntime:        kcfg.ContainerRuntime,
-			EnablePodCgroups:        kcfg.EnablePodCgroups,
-			GuaranteedQoSCgroupName: kcfg.GuaranteedQosRoot,
+			RuntimeCgroupsName:  kcfg.RuntimeCgroups,
+			SystemCgroupsName:   kcfg.SystemCgroups,
+			KubeletCgroupsName:  kcfg.KubeletCgroups,
+			ContainerRuntime:    kcfg.ContainerRuntime,
+			EnableQosCgroups:    kcfg.EnableQosCgroups,
+			GuaranteedQoSAtRoot: kcfg.GuaranteedQosAtRoot,
 		})
 		if err != nil {
 			return err
@@ -572,10 +572,10 @@ func SimpleKubelet(client *clientset.Clientset,
 		EnableControllerAttachDetach: false,
 		EnableCustomMetrics:          false,
 		EnableDebuggingHandlers:      true,
-		EnablePodCgroups:             false,
+		EnableQosCgroups:             false,
 		EnableServer:                 true,
 		FileCheckFrequency:           fileCheckFrequency,
-		GuaranteedQosRoot:            true,
+		GuaranteedQosAtRoot:          true,
 		// Since this kubelet runs with --configure-cbr0=false, it needs to use
 		// hairpin-veth to allow hairpin packets. Note that this deviates from
 		// what the "real" kubelet currently does, because there's no way to
@@ -928,8 +928,8 @@ func CreateAndInitKubelet(kc *KubeletConfig) (k KubeletBootstrap, pc *config.Pod
 		kc.NodeStatusUpdateFrequency,
 		kc.OSInterface,
 		kc.CgroupRoot,
-		kc.EnablePodCgroups,
-		kc.GuaranteedQosRoot,
+		kc.EnableQosCgroups,
+		kc.GuaranteedQosAtRoot,
 		kc.ContainerRuntime,
 		kc.RktPath,
 		kc.RktAPIEndpoint,
