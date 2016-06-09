@@ -105,6 +105,73 @@ func GetPodQos(pod *api.Pod) string {
 	return Burstable
 }
 
+// Store for summation of limits/requests of all containers in a pod
+// Only stores the supported Qos for now
+type ResourcesParameter struct {
+	MilliCPU                int64
+	Memory                  int64
+	IsMemorySpecifiedForAll bool
+	IsCpuSpecifiedForAll    bool
+}
+
+func GetPodRequests(pod *api.Pod) ResourcesParameter {
+	podResourcesRequests := ResourcesParameter{
+		MilliCPU:                0,
+		Memory:                  0,
+		IsMemorySpecifiedForAll: true,
+		IsCpuSpecifiedForAll:    true,
+	}
+	for _, container := range pod.Spec.Containers {
+		requests := container.Resources.Requests
+		if requests.Memory().Value() == 0 {
+			podResourcesRequests.IsMemorySpecifiedForAll = false
+		} else {
+			podResourcesRequests.Memory += requests.Memory().Value()
+		}
+		if requests.Cpu().MilliValue() == 0 {
+			podResourcesRequests.IsCpuSpecifiedForAll = false
+		} else {
+			podResourcesRequests.MilliCPU += requests.Cpu().MilliValue()
+		}
+	}
+	// take max_resource(sum_pod, any_init_container)
+	for _, container := range pod.Spec.InitContainers {
+		requests := container.Resources.Requests
+		if mem := requests.Memory().Value(); mem > podResourcesRequests.Memory {
+			podResourcesRequests.Memory = mem
+		}
+		if cpu := requests.Cpu().MilliValue(); cpu > podResourcesRequests.MilliCPU {
+			podResourcesRequests.MilliCPU = cpu
+		}
+	}
+	return podResourcesRequests
+}
+
+// Returns resource limits of pods
+// pod limits is the sum of limits of all containers in a pod for each resource
+func GetPodLimits(pod *api.Pod) ResourcesParameter {
+	podResourcesLimits := ResourcesParameter{
+		MilliCPU:                0,
+		Memory:                  0,
+		IsMemorySpecifiedForAll: true,
+		IsCpuSpecifiedForAll:    true,
+	}
+	for _, container := range pod.Spec.Containers {
+		limits := container.Resources.Limits
+		if limits.Memory().Value() == 0 {
+			podResourcesLimits.IsMemorySpecifiedForAll = false
+		} else {
+			podResourcesLimits.Memory += limits.Memory().Value()
+		}
+		if limits.Cpu().MilliValue() == 0 {
+			podResourcesLimits.IsCpuSpecifiedForAll = false
+		} else {
+			podResourcesLimits.MilliCPU += limits.Cpu().MilliValue()
+		}
+	}
+	return podResourcesLimits
+}
+
 // QoSList is a set of (resource name, QoS class) pairs.
 type QoSList map[api.ResourceName]string
 

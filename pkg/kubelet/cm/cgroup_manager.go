@@ -19,8 +19,8 @@ limitations under the License.
 package cm
 
 import (
-	"github.com/opencontainers/runc/libcontainer/configs"
 	"github.com/opencontainers/runc/libcontainer/cgroups/fs"
+	"github.com/opencontainers/runc/libcontainer/configs"
 )
 
 type CgroupManager interface {
@@ -28,7 +28,6 @@ type CgroupManager interface {
 	Create() error
 	// Destroys the cgroup set
 	Destroy() error
-
 	// Update configuration
 	Update(c *configs.Cgroup) error
 }

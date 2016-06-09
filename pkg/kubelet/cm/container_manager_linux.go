@@ -46,7 +46,6 @@ import (
 	"k8s.io/kubernetes/pkg/util/sets"
 	utilsysctl "k8s.io/kubernetes/pkg/util/sysctl"
 	"k8s.io/kubernetes/pkg/util/wait"
-	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/predicates"
 )
 
 const (
@@ -262,54 +261,79 @@ func updateCgroup(c *configs.Cgroup) error {
 	return nil
 }
 
-func createTopLevelCgroups() error {
-	qosClasses := [3]string{GuaranteedQoSCgroupName, BurstableQoSCgroupName, BestEffortQoSCgroupName}
-	for _, cgroupName := range qosClasses {
-		c := &configs.Cgroup{
-			Name:      cgroupName,
-			Parent:    "/",
-			Resources: &configs.Resources{},
+func getRequestSumOfQos(allPodsOnNode []*api.Node, qos string) ResourcesParameter {
+	qosResourcesRequests := ResourcesParameter{
+		MilliCPU: 0,
+		Memory:   0,
+	}
+	for _, pod := range allPodsOnNode {
+		podQos = qosutil.GetPodQos(pod)
+		if podQos == qos {
+			podRequests := qosutil.GetPodRequests(pod)
+			qosResourcesRequests.MilliCPU += podRequests.MilliCPU
+			qosResourcesRequests.Memory += podRequests.Memory
 		}
-		if err := createCgroup(c); err != nil {
-			return err
+	}
+	return qosResourcesRequests
+}
+
+func getLimitSumOfQos(allPodsOnNode []*api.Node, qos string) ResourcesParameter {
+	qosResourcesLimits := ResourcesParameter{
+		MilliCPU: 0,
+		Memory:   0,
+	}
+	for _, pod := range allPodsOnNode {
+		podQos = qosutil.GetPodQos(pod)
+		if podQos == qos {
+			podLimits := qosutil.GetPodLimits(pod)
+			qosResourcesLimits.MilliCPU += podLimits.MilliCPU
+			qosResourcesLimits.Memory += podLimits.Memory
 		}
 	}
-	return nil
+	return qosResourcesLimits
 }
 
-func getParentCgroupName(pod *api.Pod) string {
-	podQos := qosutil.GetPodQos(pod)
-	parentCgroupName := ""
-	switch podQos {
-	case qosutil.Guaranteed:
-		parentCgroupName = GuaranteedQoSCgroupName
-	case qosutil.Burstable:
-		parentCgroupName = BurstableQoSCgroupName
-	case qosutil.BestEffort:
-		parentCgroupName = BestEffortQoSCgroupName
+func updateQosCgroupParameters(allPodsOnNode []*api.Pod, qos string, node *api.Node) error {
+	resources := &configs.Resources{}
+	if qos == qosutil.Guaranteed {
+		// If GuaranteedQosAtRoot is true, No Qos cgroup parameter updates is required
+		// as the added pod is nested under the root
+		if node.GuaranteedQosAtRoot {
+			return nil
+		} else {
+			requestSum = getRequestSumOfQos(allPodsOnNode, qos)
+			limitSum = getLimitSumOfQos(allPodsOnNode, qos)
+			resources = &configs.Resources{
+				Memory:    limitSum.Memory,
+				CpuShares: requestSum.MilliCPU,
+			}
+		}
 	}
-	return parentCgroupName
-}
-
-func getPodResourceRequest(pod *api.Pod) *configs.Resources {
-	podRequest := predicates.GetResourceRequest(pod)
-	resources := &configs.Resources{
-		Memory:   podRequest.Memory,
-		CpuQuota: podRequest.MilliCPU,
+	if qos == qosutil.Burstable {
+		requestSumBu = getRequestSumOfQos(allPodsOnNode, qos)
+		requestSumG = getRequestSumOfQos(allPodsOnNode, qosutil.Guaranteed)
+		// Allocatable - (summation of memory requests of guaranteed pods)
+		// This is to ensure Memory Guarantees to the Guaranteed Pods
+		burstableMemmoryLimit = node.Status.Allocatable.Memory().Value() - requestSumG.Memory
+		resources = &configs.Resources{
+			Memory:    burstableMemoryLimit,
+			CpuShares: requestSumBu.CpuShares,
+		}
 	}
-	return resources
-}
-
-func updateQosCgroupParameters(podResources *configs.Resources, cgroupName string) error {
-	// How to find the current resource limts of the Parent Cgroup
-	var memory int64
-	var cpu int64
-	resources := &configs.Resources{
-		Memory:    memory,
-		CpuShares: cpu,
+	if qos == qosutil.BestEffort {
+		requestSumG = getRequestSumOfQos(allPodsOnNode, qosutil.Guaranteed)
+		requestSumBu = getRequestSumOfQos(allPodsOnNode, qos)
+		// Allocatable - (summation of memory requests of guaranteed and Burstable pods)
+		// This is to ensure Memory Guarantees to the Guaranteed and Burstable Pods
+		// before the best effort pods
+		bestEffortMemmoryLimit = node.Status.Allocatable.Memory().Value() - requestSumG.Memory - requestSumBu.Memory
+		resources = &configs.Resources{
+			Memory:    burstableMemoryLimit,
+			CpuShares: requestSumBu.CpuShares,
+		}
 	}
 	c := &configs.Cgroup{
-		Name:      cgroupName,
+		Name:      getCgroupNameFromQos(qos),
 		Parent:    "/",
 		Resources: resources,
 	}
@@ -319,29 +343,104 @@ func updateQosCgroupParameters(podResources *configs.Resources, cgroupName strin
 	return nil
 }
 
-func CreatePodCgroup(pod *api.Pod) error {
-	parentCgroupName := getParentCgroupName(pod)
-	absoluteParentCgroupName := "/" + parentCgroupName
+func getCgroupNameFromQos(podqos string, nodeConfig *NodeConfig) string {
+	cgroupName := ""
+	switch podQos {
+	case qosutil.Guaranteed:
+		if nodeConfig.GuaranteedQoSAtRoot {
+			cgroupName = ""
+		} else {
+			cgroupName = GuaranteedQoSCgroupName
+		}
+	case qosutil.Burstable:
+		cgroupName = BurstableQoSCgroupName
+	case qosutil.BestEffort:
+		cgroupName = BestEffortQoSCgroupName
+	}
+	return cgroupName
+}
 
-	podResources := getPodResourceRequest(pod)
+// TODO this function should ideally return a Pod cgroup information
+func CreatePodCgroup(pod *api.Pod, allPodsOnNode []*api.Pod, node *api.Node, nodeConfig *NodeConfig) error {
+	// Get the QoS class of the pod.
+	podQos := qosutil.GetPodQos(pod)
+	// Define the Qos Cgroup name
+	parentCgroupName := getCgroupNameFromQos(podQos, nodeConfig)
+	absoluteParentCgroupName := "/" + parentCgroupName
+	// Determine the resources request and limits of the pod
+	// Its the sum of requests/limits of all the containers in the pod
+	// Note: if the limit is not specified for all the containers in the pod
+	// we use the Node Resource capacity as the default limit for the pod
+	podResourceParameters = &configs.Resources{}
+	if parentCgroupName != BestEffortQoSCgroupName {
+		podRequests := qosutil.GetPodRequests(pod)
+		podLimits := qosutil.GetPodLimits(pod)
+		podMemoryLimit := podLimits.Memory
+		if !podLimts.IsMemorySpecifiedForAll {
+			podMemoryLimit = node.Status.Allocatable.Memory().Value()
+		}
+		podCpuQuota := podLimits.MilliCPU
+		if !podLimts.IsCpuSpecifiedForAll {
+			podCpuQuota = node.Status.Allocatable.Cpu().MilliValue()
+		}
+		podResourceParameters := &configs.Resources{
+			Memory:    podMemoryLimit,
+			CpuQuota:  podCpuQuota,
+			CpuShares: podRequests.MilliCPU,
+		}
+	}
 	c := &configs.Cgroup{
 		Name:      string(pod.UID),
 		Parent:    absoluteParentCgroupName,
-		Resources: podResources,
+		Resources: podResourceParameters,
 	}
-
 	if err := createCgroup(c); err != nil {
 		return err
 	}
-	// if err := updateQosCgroupParameters(podResources, parentCgroupName); err!=nil{
-	// 	return err
-	// }
+	if err := updateQosCgroupParameters(allPodsOnNode, podQos, node); err != nil {
+		return err
+	}
+	return nil
+}
+
+func createTopLevelCgroups(nodeConfig *NodeConfig) error {
+	qosClasses := [3]string{GuaranteedQoSCgroupName, BurstableQoSCgroupName, BestEffortQoSCgroupName}
+	for _, cgroupName := range qosClasses {
+		if cgroupName == GuaranteedQoSCgroupName {
+			// Create a separate cgroup for the Guaranteed Qos only when a flag is explicitly passed.
+			// By default all guaranteed pods are brought up under the Root
+			if nodeConfig.GuaranteedQoSAtRoot == false {
+				c := &configs.Cgroup{
+					Name:      cgroupName,
+					Parent:    "/",
+					Resources: &configs.Resources{},
+				}
+				if err := createCgroup(c); err != nil {
+					return err
+				}
+			}
+		} else {
+			c := &configs.Cgroup{
+				Name:      cgroupName,
+				Parent:    "/",
+				Resources: &configs.Resources{},
+			}
+			if err := createCgroup(c); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
 func (cm *containerManagerImpl) setupNode() error {
-	if err := createTopLevelCgroups(); err != nil {
-		return err
+
+	// Create the Qos cgroup hierarchy only when a flag is explicitly passed
+	// by default this is false
+	if cm.NodeConfig.EnableQosCgroups {
+		if err := createTopLevelCgroups(cm.NodeConfig); err != nil {
+			return err
+		}
 	}
 
 	f, err := validateSystemRequirements(cm.mountUtil)
