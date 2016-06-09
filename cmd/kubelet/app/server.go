@@ -218,12 +218,12 @@ func UnsecuredKubeletConfig(s *options.KubeletServer) (*KubeletConfig, error) {
 		EnableControllerAttachDetach: s.EnableControllerAttachDetach,
 		EnableCustomMetrics:          s.EnableCustomMetrics,
 		EnableDebuggingHandlers:      s.EnableDebuggingHandlers,
-		EnablePodCgroups:             s.EnablePodCgroups,
+		EnableQosCgroups:             s.EnableQosCgroups,
 		EnableServer:                 s.EnableServer,
 		EventBurst:                   int(s.EventBurst),
 		EventRecordQPS:               s.EventRecordQPS,
 		FileCheckFrequency:           s.FileCheckFrequency.Duration,
-		GuaranteedQosRoot:            s.GuaranteedQosRoot,
+		GuaranteedQosAtRoot:          s.GuaranteedQosAtRoot,
 		HostnameOverride:             s.HostnameOverride,
 		HostNetworkSources:           hostNetworkSources,
 		HostPIDSources:               hostPIDSources,
@@ -795,13 +795,13 @@ type KubeletConfig struct {
 	EnableControllerAttachDetach   bool
 	EnableCustomMetrics            bool
 	EnableDebuggingHandlers        bool
-	EnablePodCgroups               bool
+	EnableQosCgroups               bool
 	EnableServer                   bool
 	EventClient                    *clientset.Clientset
 	EventBurst                     int
 	EventRecordQPS                 float32
 	FileCheckFrequency             time.Duration
-	GuaranteedQosRoot              bool
+	GuaranteedQosAtRoot            bool
 	Hostname                       string
 	HostnameOverride               string
 	HostNetworkSources             []string
