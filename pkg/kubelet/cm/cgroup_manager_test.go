@@ -17,6 +17,66 @@ limitations under the License.
 */
 package cm
 
-func TestLibcontainerCgroupManager_Update(t *Testing.T) {
+import (
+	"github.com/opencontainers/runc/libcontainer/configs"
+	"k8s.io/kubernetes/pkg/kubelet/cm/testing"
+)
 
+func TestLibcontainerCgroupManager_Create(t *Testing.T) {
+	libcontainerManagerMock := &testing.MockLibcontainerManager{}
+	//Setup expectations
+	cgroupConfig := &CgroupConfig{
+		Name:   "foo",
+		Parent: "/",
+		ResourceParameters: &ResourceConfig{
+			Memory:    31457280,
+			CpuQuota:  1000,
+			CpuShares: 2,
+		},
+	}
+	libcontainerConfig := &configs.Config{
+		Cgroups: configs.Cgroup{
+			Name:   "foo",
+			Parent: "/",
+			Resources: &configs.Resources{
+				Memory:    31457280,
+				CpuQuota:  1000,
+				CpuShares: 2,
+			},
+		},
+	}
+	libcontainerManagerMock.On("Set", libcontainerConfig).Return(nil)
+	libcontainerManagerMock.On("Apply", 0).Return(nil)
+	libcontainerCgroupManager := NewLibcontainerCgroupManager(cgroupConfig)
+	libcontainerCgroupManager.Create()
+	libcontainerManagerMock.AssertExpectations(t)
+}
+
+func TestLibcontainerCgroupManager_Update(t *Testing.T) {
+	libcontainerManagerMock := &testing.MockLibcontainerManager{}
+	//Setup expectations
+	cgroupConfig := &CgroupConfig{
+		Name:   "foo",
+		Parent: "/",
+		ResourceParameters: &ResourceConfig{
+			Memory:    31457280,
+			CpuQuota:  1000,
+			CpuShares: 2,
+		},
+	}
+	libcontainerConfig := &configs.Config{
+		Cgroups: configs.Cgroup{
+			Name:   "foo",
+			Parent: "/",
+			Resources: &configs.Resources{
+				Memory:    31457280,
+				CpuQuota:  1000,
+				CpuShares: 2,
+			},
+		},
+	}
+	libcontainerManagerMock.On("Set", libcontainerConfig).Return(nil)
+	libcontainerCgroupManager := NewLibcontainerCgroupManager(cgroupConfig)
+	libcontainerCgroupManager.Update(cgroupConfig)
+	libcontainerManagerMock.AssertExpectations(t)
 }

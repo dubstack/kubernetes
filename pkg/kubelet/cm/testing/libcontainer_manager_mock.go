@@ -34,11 +34,11 @@ var _ cgroups.Manager = &MockLibcontainerManager{}
 
 func (m *MockLibcontainerManager) Apply(pid int) error {
 	args := m.Called(pid)
-	return args.Error(1)
+	return args.Error(0)
 }
 func (m *MockLibcontainerManager) Destroy() error {
 	args := m.Called()
-	return args.Error(1)
+	return args.Error(0)
 }
 
 func (m *MockLibcontainerManager) GetPaths() map[string]string {
@@ -53,12 +53,12 @@ func (m *MockLibcontainerManager) GetStats() (*cgroups.Stats, error) {
 
 func (m *MockLibcontainerManager) Set(container *configs.Config) error {
 	args := m.Called(container)
-	return args.Error(1)
+	return args.Error(0)
 }
 
 func (m *MockLibcontainerManager) Freeze(state configs.FreezerState) error {
 	args := m.Called(state)
-	return args.Error(1)
+	return args.Error(0)
 }
 
 func (m *MockLibcontainerManager) GetPids() ([]int, error) {

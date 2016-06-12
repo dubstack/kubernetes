@@ -32,14 +32,14 @@ var _ cm.CgroupManager = &MockCgroupManager{}
 
 func (m *MockCgroupManager) Update(cgroupConfig *cm.CgroupConfig) error {
 	args := m.Called(cgroupConfig)
-	return args.Error(1)
+	return args.Error(0)
 }
 func (m *MockCgroupManager) Destroy() error {
 	args := m.Called()
-	return args.Error(1)
+	return args.Error(0)
 }
 
 func (m *MockCgroupManager) Create() error {
 	args := m.Called()
-	return args.Error(1)
+	return args.Error(0)
 }
