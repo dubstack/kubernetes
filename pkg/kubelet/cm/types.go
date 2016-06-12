@@ -18,13 +18,42 @@ limitations under the License.
 
 package cm
 
-import (
-	"sync"
+// QosClass defines the supported QoS classes of Pods/Containers
+type QosClass string
 
-	"github.com/opencontainers/runc/libcontainer/cgroups/fs"
-	"github.com/opencontainers/runc/libcontainer/configs"
+const (
+	// GuaranteedQoS is the Guaranteed QoS class
+	GuaranteedQoS = "Guaranteed"
+	// BurstableQoS is the Burstable QoS class
+	BurstableQoS = "Burstable"
+	// BestEffortQoS is the BestEffort QoS class
+	BestEffortQoS = "BestEffort"
 )
 
+// Struct to hold information about all the supported cgroup resource parameters
+type ResourceConfig struct {
+	// Memory limit (in bytes)
+	Memory int64 `json:"memory"`
+	// CPU shares (relative weight vs. other containers)
+	CpuShares int64 `json:"cpu_shares"`
+	// CPU hardcap limit (in usecs). Allowed cpu time in a given period.
+	CpuQuota int64 `json:"cpu_quota"`
+}
+
+// Cgroup configuration Information. This is common object which is used to pass
+// cgroup information to both systemd and raw cgroup fs
+// implementation of the Cgroup Manager interface
+type CgroupConfig struct {
+	// Cgroup or slice Name
+	Name string
+	// name of parent cgroup or slice
+	Parent string
+	// ResourceParameters contains various cgroups settings to apply
+	ResourceParameters *ResourceConfig
+}
+
+// Interface which allows for cgroup management
+// Supports Cgroup Creation , deletion and updates
 type CgroupManager interface {
 	// Creates and apply the cgroup configuartions on the cgroup
 	Create() error
@@ -32,115 +61,4 @@ type CgroupManager interface {
 	Destroy() error
 	// Update cgroup configuration
 	Update(*CgroupConfig) error
-}
-
-type ResourceConfig struct {
-	// Memory limit (in bytes)
-	Memory int64 `json:"memory"`
-
-	// CPU shares (relative weight vs. other containers)
-	CpuShares int64 `json:"cpu_shares"`
-
-	// CPU hardcap limit (in usecs). Allowed cpu time in a given period.
-	CpuQuota int64 `json:"cpu_quota"`
-}
-
-type CgroupConfig struct {
-	Name string
-
-	// name of parent cgroup or slice
-	Parent string
-
-	// Paths represent the cgroups paths to join
-	// Paths map[string]string
-
-	// ResourceParameters contains various cgroups settings to apply
-	ResourceParameters *ResourceConfig
-}
-
-type libcontainerCgroupManager struct {
-	// mu      sync.Mutex
-	cgroup *CgroupConfig
-	// Paths   map[string]string
-}
-
-type systemdCgroupManager struct {
-	mu     sync.Mutex
-	cgroup *CgroupConfig
-	// Paths   map[string]string
-}
-
-func NewLibcontainerCgroupManager(cgroupConfig *CgroupConfig) *libcontainerCgroupManager {
-	return &libcontainerCgroupManager{
-		cgroup: cgroupConfig,
-	}
-}
-
-func (m *libcontainerCgroupManager) Destroy() error {
-	// m.mu.Lock()
-	// defer m.mu.Unlock()
-	// if err := cgroups.RemovePaths(m.Paths); err != nil {
-	// 	return err
-	// }
-	// m.Paths = make(map[string]string)
-	return nil
-}
-
-func getLibcontainerResourceConfig(resourceConfig *ResourceConfig) *configs.Resources {
-	resources := &configs.Resources{}
-	if resourceConfig.Memory != 0 {
-		resources.Memory = resourceConfig.Memory
-	}
-	if resourceConfig.CpuShares != 0 {
-		resources.CpuShares = resourceConfig.CpuShares
-	}
-	if resourceConfig.CpuQuota != 0 {
-		resources.CpuQuota = resourceConfig.CpuQuota
-	}
-	return resources
-}
-
-func (m *libcontainerCgroupManager) Update(c *CgroupConfig) error {
-	resources := getLibcontainerResourceConfig(c.ResourceParameters)
-	cgroupLibcontainer := &configs.Cgroup{
-		Parent:    c.Parent,
-		Name:      c.Name,
-		Resources: resources,
-	}
-	cgroupManager := &fs.Manager{
-		Cgroups: cgroupLibcontainer,
-	}
-	config := &configs.Config{
-		Cgroups: cgroupLibcontainer,
-	}
-	if err := cgroupManager.Set(config); err != nil {
-		return err
-	}
-	return nil
-}
-
-// Creates
-func (m *libcontainerCgroupManager) Create() error {
-	resources := getLibcontainerResourceConfig(m.cgroup.ResourceParameters)
-	cgroupLibcontainer := &configs.Cgroup{
-		Parent:    m.cgroup.Parent,
-		Name:      m.cgroup.Name,
-		Resources: resources,
-	}
-	cgroupManager := &fs.Manager{
-		Cgroups: cgroupLibcontainer,
-	}
-	config := &configs.Config{
-		Cgroups: cgroupLibcontainer,
-	}
-	if err := cgroupManager.Apply(0); err != nil {
-		return err
-	}
-	if err := cgroupManager.Set(config); err != nil {
-		return err
-	}
-	return nil
-}
-func NewSystemdCgroupManager(cg *CgroupConfig) *systemdCgroupManager {
-	return nil
 }

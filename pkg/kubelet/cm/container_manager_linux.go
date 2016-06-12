@@ -227,7 +227,33 @@ func setupKernelTunables(option KernelTunableBehavior) error {
 	return utilerrors.NewAggregate(errList)
 }
 
+func testFunc() {
+	f := NewLibcontainerCgroupManager(&CgroupConfig{
+		Name:   "foo",
+		Parent: "/",
+		ResourceParameters: &ResourceConfig{
+			Memory: 3145728000,
+		},
+	})
+	err := f.Create()
+	if err != nil {
+		glog.Infof("Error encountered while creating cgroup")
+
+	} else {
+		glog.Infof("No Error encountered while creating cgroup")
+	}
+	err = f.Destroy()
+	if err != nil {
+		glog.Infof("%v", err)
+		glog.Infof("Error encountered while destroying cgroup")
+
+	} else {
+		glog.Infof("No Error encountered while destroying cgroup")
+	}
+}
+
 func (cm *containerManagerImpl) setupNode() error {
+	testFunc()
 	f, err := validateSystemRequirements(cm.mountUtil)
 	if err != nil {
 		return err

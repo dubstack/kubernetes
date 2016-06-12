@@ -17,3 +17,84 @@ limitations under the License.
 */
 
 package cm
+
+import (
+	"github.com/opencontainers/runc/libcontainer/cgroups/fs"
+	"github.com/opencontainers/runc/libcontainer/configs"
+)
+
+// struct libcontainerCgroupManager implements CgroupManager interface
+// Uses the Libcontainer raw fs cgroup manager for cgroup management
+type libcontainerCgroupManager struct {
+	// Libcontainer raw fs cgroup manager
+	fsCgroupManager *fs.Manager
+}
+
+// Make sure that libcontainerCgroupManager implements the CgroupManager interface
+var _ CgroupManager = &libcontainerCgroupManager{}
+
+// Returns libcontainer's cgroups.config{} struct given the general cgroupConfig
+func getLibcontainerCgroupConfig(cgroupConfig *CgroupConfig) *configs.Cgroup {
+	resourceConfig := cgroupConfig.ResourceParameters
+	resources := &configs.Resources{}
+	if resourceConfig.Memory != 0 {
+		resources.Memory = resourceConfig.Memory
+	}
+	if resourceConfig.CpuShares != 0 {
+		resources.CpuShares = resourceConfig.CpuShares
+	}
+	if resourceConfig.CpuQuota != 0 {
+		resources.CpuQuota = resourceConfig.CpuQuota
+	}
+	cgroupLibcontainer := &configs.Cgroup{
+		Parent:    cgroupConfig.Parent,
+		Name:      cgroupConfig.Name,
+		Resources: resources,
+	}
+	return cgroupLibcontainer
+}
+
+// Factory Method that returns a configured CgroupManager
+func NewLibcontainerCgroupManager(cgroupConfig *CgroupConfig) *libcontainerCgroupManager {
+	libcontainerCgroupConfig := getLibcontainerCgroupConfig(cgroupConfig)
+	return &libcontainerCgroupManager{
+		fsCgroupManager: &fs.Manager{
+			Cgroups: libcontainerCgroupConfig,
+		},
+	}
+}
+
+// 'Destroy' destroys the associated cgroup set
+func (m *libcontainerCgroupManager) Destroy() error {
+	if err := m.fsCgroupManager.Destroy(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// 'Update' updates the cgroup set with the specified Cgroup Configuration
+func (m *libcontainerCgroupManager) Update(cgroupConfig *CgroupConfig) error {
+	libcontainerCgroupConfig := getLibcontainerCgroupConfig(cgroupConfig)
+	m.fsCgroupManager.Cgroups = libcontainerCgroupConfig
+	config := &configs.Config{
+		Cgroups: m.fsCgroupManager.Cgroups,
+	}
+	if err := m.fsCgroupManager.Set(config); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Create creates the cgroup
+func (m *libcontainerCgroupManager) Create() error {
+	config := &configs.Config{
+		Cgroups: m.fsCgroupManager.Cgroups,
+	}
+	if err := m.fsCgroupManager.Apply(0); err != nil {
+		return err
+	}
+	if err := m.fsCgroupManager.Set(config); err != nil {
+		return err
+	}
+	return nil
+}
