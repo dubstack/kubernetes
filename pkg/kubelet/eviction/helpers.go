@@ -27,6 +27,7 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/resource"
 	statsapi "k8s.io/kubernetes/pkg/kubelet/api/v1alpha1/stats"
+	qostypes "k8s.io/kubernetes/pkg/kubelet/qos/types"
 	qosutil "k8s.io/kubernetes/pkg/kubelet/qos/util"
 	"k8s.io/kubernetes/pkg/kubelet/server/stats"
 	"k8s.io/kubernetes/pkg/quota/evaluator/core"
@@ -308,12 +309,12 @@ func qos(p1, p2 *api.Pod) int {
 		return 0
 	}
 	// if p1 is best effort, we know p2 is burstable or guaranteed
-	if qosP1 == qosutil.BestEffort {
+	if qosP1 == qostypes.BestEffortQOS {
 		return -1
 	}
 	// we know p1 and p2 are not besteffort, so if p1 is burstable, p2 must be guaranteed
-	if qosP1 == qosutil.Burstable {
-		if qosP2 == qosutil.Guaranteed {
+	if qosP1 == qostypes.BurstableQOS {
+		if qosP2 == qostypes.GuaranteedQOS {
 			return -1
 		}
 		return 1

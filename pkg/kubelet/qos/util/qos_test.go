@@ -21,6 +21,7 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/resource"
+	qostypes "k8s.io/kubernetes/pkg/kubelet/qos/types"
 )
 
 func getResourceList(cpu, memory string) api.ResourceList {
@@ -62,66 +63,66 @@ func newPod(name string, containers []api.Container) *api.Pod {
 func TestGetPodQos(t *testing.T) {
 	testCases := []struct {
 		pod      *api.Pod
-		expected string
+		expected qostypes.QOSClass
 	}{
 		{
 			pod: newPod("guaranteed", []api.Container{
 				newContainer("guaranteed", getResourceList("100m", "100Mi"), getResourceList("100m", "100Mi")),
 			}),
-			expected: Guaranteed,
+			expected: qostypes.GuaranteedQOS,
 		},
 		{
 			pod: newPod("guaranteed-guaranteed", []api.Container{
 				newContainer("guaranteed", getResourceList("100m", "100Mi"), getResourceList("100m", "100Mi")),
 				newContainer("guaranteed", getResourceList("100m", "100Mi"), getResourceList("100m", "100Mi")),
 			}),
-			expected: Guaranteed,
+			expected: qostypes.GuaranteedQOS,
 		},
 		{
 			pod: newPod("best-effort-best-effort", []api.Container{
 				newContainer("best-effort", getResourceList("", ""), getResourceList("", "")),
 				newContainer("best-effort", getResourceList("", ""), getResourceList("", "")),
 			}),
-			expected: BestEffort,
+			expected: qostypes.BestEffortQOS,
 		},
 		{
 			pod: newPod("best-effort", []api.Container{
 				newContainer("best-effort", getResourceList("", ""), getResourceList("", "")),
 			}),
-			expected: BestEffort,
+			expected: qostypes.BestEffortQOS,
 		},
 		{
 			pod: newPod("best-effort-burstable", []api.Container{
 				newContainer("best-effort", getResourceList("", ""), getResourceList("", "")),
 				newContainer("burstable", getResourceList("1", ""), getResourceList("2", "")),
 			}),
-			expected: Burstable,
+			expected: qostypes.BurstableQOS,
 		},
 		{
 			pod: newPod("best-effort-guaranteed", []api.Container{
 				newContainer("best-effort", getResourceList("", ""), getResourceList("", "")),
 				newContainer("guaranteed", getResourceList("10m", "100Mi"), getResourceList("10m", "100Mi")),
 			}),
-			expected: Burstable,
+			expected: qostypes.BurstableQOS,
 		},
 		{
 			pod: newPod("burstable-cpu-guaranteed-memory", []api.Container{
 				newContainer("burstable", getResourceList("", "100Mi"), getResourceList("", "100Mi")),
 			}),
-			expected: Burstable,
+			expected: qostypes.BurstableQOS,
 		},
 		{
 			pod: newPod("burstable-guaranteed", []api.Container{
 				newContainer("burstable", getResourceList("1", "100Mi"), getResourceList("2", "100Mi")),
 				newContainer("guaranteed", getResourceList("100m", "100Mi"), getResourceList("100m", "100Mi")),
 			}),
-			expected: Burstable,
+			expected: qostypes.BurstableQOS,
 		},
 		{
 			pod: newPod("burstable", []api.Container{
 				newContainer("burstable", getResourceList("10m", "100Mi"), getResourceList("100m", "200Mi")),
 			}),
-			expected: Burstable,
+			expected: qostypes.BurstableQOS,
 		},
 	}
 	for _, testCase := range testCases {

@@ -25,6 +25,7 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/record"
 	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
+	qostypes "k8s.io/kubernetes/pkg/kubelet/qos/types"
 	qosutil "k8s.io/kubernetes/pkg/kubelet/qos/util"
 	"k8s.io/kubernetes/pkg/kubelet/server/stats"
 	"k8s.io/kubernetes/pkg/kubelet/util/format"
@@ -87,7 +88,7 @@ func (m *managerImpl) Admit(attrs *lifecycle.PodAdmitAttributes) lifecycle.PodAd
 	if len(m.nodeConditions) == 0 {
 		return lifecycle.PodAdmitResult{Admit: true}
 	}
-	notBestEffort := qosutil.BestEffort != qosutil.GetPodQos(attrs.Pod)
+	notBestEffort := qostypes.BestEffortQOS != qosutil.GetPodQos(attrs.Pod)
 	if notBestEffort {
 		return lifecycle.PodAdmitResult{Admit: true}
 	}

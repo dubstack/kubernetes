@@ -26,6 +26,7 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/client/cache"
+	qostypes "k8s.io/kubernetes/pkg/kubelet/qos/types"
 	qosutil "k8s.io/kubernetes/pkg/kubelet/qos/util"
 	"k8s.io/kubernetes/pkg/labels"
 	utilruntime "k8s.io/kubernetes/pkg/util/runtime"
@@ -1020,7 +1021,7 @@ func tolerationsToleratesTaints(tolerations []api.Toleration, taints []api.Taint
 
 // Determine if a pod is scheduled with best-effort QoS
 func isPodBestEffort(pod *api.Pod) bool {
-	return qosutil.GetPodQos(pod) == qosutil.BestEffort
+	return qosutil.GetPodQos(pod) == qostypes.BestEffortQOS
 }
 
 // CheckNodeMemoryPressurePredicate checks if a pod can be scheduled on a node

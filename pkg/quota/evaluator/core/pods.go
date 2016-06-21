@@ -25,6 +25,7 @@ import (
 	"k8s.io/kubernetes/pkg/api/resource"
 	"k8s.io/kubernetes/pkg/api/validation"
 	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	qostypes "k8s.io/kubernetes/pkg/kubelet/qos/types"
 	"k8s.io/kubernetes/pkg/kubelet/qos/util"
 	"k8s.io/kubernetes/pkg/quota"
 	"k8s.io/kubernetes/pkg/quota/generic"
@@ -172,7 +173,7 @@ func PodMatchesScopeFunc(scope api.ResourceQuotaScope, object runtime.Object) bo
 }
 
 func isBestEffort(pod *api.Pod) bool {
-	return util.GetPodQos(pod) == util.BestEffort
+	return util.GetPodQos(pod) == qostypes.BestEffortQOS
 }
 
 func isTerminating(pod *api.Pod) bool {

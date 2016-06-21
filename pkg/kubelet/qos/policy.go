@@ -18,6 +18,7 @@ package qos
 
 import (
 	"k8s.io/kubernetes/pkg/api"
+	qostypes "k8s.io/kubernetes/pkg/kubelet/qos/types"
 	"k8s.io/kubernetes/pkg/kubelet/qos/util"
 )
 
@@ -37,10 +38,10 @@ const (
 // See https://lwn.net/Articles/391222/ for more information.
 func GetContainerOOMScoreAdjust(pod *api.Pod, container *api.Container, memoryCapacity int64) int {
 	switch util.GetPodQos(pod) {
-	case util.Guaranteed:
+	case qostypes.GuaranteedQOS:
 		// Guaranteed containers should be the last to get killed.
 		return guaranteedOOMScoreAdj
-	case util.BestEffort:
+	case qostypes.BestEffortQOS:
 		return besteffortOOMScoreAdj
 	}
 

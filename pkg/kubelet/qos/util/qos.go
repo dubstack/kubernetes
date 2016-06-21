@@ -19,12 +19,7 @@ package util
 import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/resource"
-)
-
-const (
-	Guaranteed = "Guaranteed"
-	Burstable  = "Burstable"
-	BestEffort = "BestEffort"
+	qostypes "k8s.io/kubernetes/pkg/kubelet/qos/types"
 )
 
 // isResourceGuaranteed returns true if the container's resource requirements are Guaranteed.
@@ -51,7 +46,7 @@ func isResourceBestEffort(container *api.Container, resource api.ResourceName) b
 // A pod is besteffort if none of its containers have specified any requests or limits.
 // A pod is guaranteed only when requests and limits are specified for all the containers and they are equal.
 // A pod is burstable if limits and requests do not match across all containers.
-func GetPodQos(pod *api.Pod) string {
+func GetPodQos(pod *api.Pod) qostypes.QOSClass {
 	requests := api.ResourceList{}
 	limits := api.ResourceList{}
 	zeroQuantity := resource.MustParse("0")
@@ -86,7 +81,7 @@ func GetPodQos(pod *api.Pod) string {
 		}
 	}
 	if len(requests) == 0 && len(limits) == 0 {
-		return BestEffort
+		return qostypes.BestEffortQOS
 	}
 	// Check is requests match limits for all resources.
 	if isGuaranteed {
@@ -100,13 +95,13 @@ func GetPodQos(pod *api.Pod) string {
 	if isGuaranteed &&
 		len(requests) == len(limits) &&
 		len(limits) == len(supportedComputeResources) {
-		return Guaranteed
+		return qostypes.GuaranteedQOS
 	}
-	return Burstable
+	return qostypes.BurstableQOS
 }
 
 // QoSList is a set of (resource name, QoS class) pairs.
-type QoSList map[api.ResourceName]string
+type QoSList map[api.ResourceName]qostypes.QOSClass
 
 // GetQoS returns a mapping of resource name to QoS class of a container
 func GetQoS(container *api.Container) QoSList {
@@ -114,11 +109,11 @@ func GetQoS(container *api.Container) QoSList {
 	for resource := range allResources(container) {
 		switch {
 		case isResourceGuaranteed(container, resource):
-			resourceToQoS[resource] = Guaranteed
+			resourceToQoS[resource] = qostypes.GuaranteedQOS
 		case isResourceBestEffort(container, resource):
-			resourceToQoS[resource] = BestEffort
+			resourceToQoS[resource] = qostypes.BestEffortQOS
 		default:
-			resourceToQoS[resource] = Burstable
+			resourceToQoS[resource] = qostypes.BurstableQOS
 		}
 	}
 	return resourceToQoS
