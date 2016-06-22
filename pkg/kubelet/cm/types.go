@@ -49,3 +49,16 @@ type CgroupManager interface {
 	// Update cgroup configuration.
 	Update(*CgroupConfig) error
 }
+
+// QOSConfig defines how the qos cgroup hierarchy is organized
+type QOSConfig struct {
+	// RootContainerName is the root for the qos hierarchy
+	RootContainerName string
+}
+
+// QOSContainersInfo hold the names of containers per qos
+type QOSContainersInfo struct {
+	GuaranteedContainerName string
+	BestEffortContainerName string
+	BurstableContainerName  string
+}

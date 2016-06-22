@@ -218,6 +218,7 @@ func UnsecuredKubeletConfig(s *options.KubeletServer) (*KubeletConfig, error) {
 		EnableControllerAttachDetach: s.EnableControllerAttachDetach,
 		EnableCustomMetrics:          s.EnableCustomMetrics,
 		EnableDebuggingHandlers:      s.EnableDebuggingHandlers,
+		EnableQosCgroups:             s.EnableQosCgroups,
 		EnableServer:                 s.EnableServer,
 		EventBurst:                   int(s.EventBurst),
 		EventRecordQPS:               s.EventRecordQPS,
@@ -363,6 +364,8 @@ func run(s *options.KubeletServer, kcfg *KubeletConfig) (err error) {
 			SystemCgroupsName:  kcfg.SystemCgroups,
 			KubeletCgroupsName: kcfg.KubeletCgroups,
 			ContainerRuntime:   kcfg.ContainerRuntime,
+			EnableQosCgroups:   kcfg.EnableQosCgroups,
+			CgroupRoot:         kcfg.CgroupRoot,
 		})
 		if err != nil {
 			return err
@@ -571,6 +574,7 @@ func SimpleKubelet(client *clientset.Clientset,
 		EnableCustomMetrics:          false,
 		EnableDebuggingHandlers:      true,
 		EnableServer:                 true,
+		EnableQosCgroups:             false,
 		FileCheckFrequency:           fileCheckFrequency,
 		// Since this kubelet runs with --configure-cbr0=false, it needs to use
 		// hairpin-veth to allow hairpin packets. Note that this deviates from
@@ -791,6 +795,7 @@ type KubeletConfig struct {
 	EnableControllerAttachDetach   bool
 	EnableCustomMetrics            bool
 	EnableDebuggingHandlers        bool
+	EnableQosCgroups               bool
 	EnableServer                   bool
 	EventClient                    *clientset.Clientset
 	EventBurst                     int
@@ -921,6 +926,7 @@ func CreateAndInitKubelet(kc *KubeletConfig) (k KubeletBootstrap, pc *config.Pod
 		kc.NodeLabels,
 		kc.NodeStatusUpdateFrequency,
 		kc.OSInterface,
+		kc.EnableQosCgroups,
 		kc.CgroupRoot,
 		kc.ContainerRuntime,
 		kc.RktPath,

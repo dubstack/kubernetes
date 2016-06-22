@@ -65,6 +65,7 @@ func getLibcontainerCgroupManager(cgroupConfig *CgroupConfig) (*cgroupfs.Manager
 	// Extract the cgroup resource parameters
 	resourceConfig := cgroupConfig.ResourceParameters
 	resources := &libcontainerconfigs.Resources{}
+	resources.AllowAllDevices = true
 	if resourceConfig.Memory != nil {
 		resources.Memory = *resourceConfig.Memory
 	}

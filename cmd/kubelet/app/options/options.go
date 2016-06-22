@@ -92,6 +92,7 @@ func NewKubeletServer() *KubeletServer {
 			EnableControllerAttachDetach: true,
 			EnableCustomMetrics:          false,
 			EnableDebuggingHandlers:      true,
+			EnableQosCgroups:             false,
 			EnableServer:                 true,
 			FileCheckFrequency:           unversioned.Duration{Duration: 20 * time.Second},
 			HealthzBindAddress:           "127.0.0.1",
@@ -225,6 +226,7 @@ func (s *KubeletServer) AddFlags(fs *pflag.FlagSet) {
 	fs.MarkDeprecated("system-container", "Use --system-cgroups instead. Will be removed in a future version.")
 	fs.StringVar(&s.SystemCgroups, "system-cgroups", s.SystemCgroups, "Optional absolute name of cgroups in which to place all non-kernel processes that are not already inside a cgroup under `/`. Empty for no container. Rolling back the flag requires a reboot. (Default: \"\").")
 
+	fs.BoolVar(&s.EnableQosCgroups, "enable-qos-cgroups", s.EnableQosCgroups, "Whether the Kubelet should have the QoS cgroup hierarchy, if true top level qos and pod cgroups are created.")
 	fs.StringVar(&s.CgroupRoot, "cgroup-root", s.CgroupRoot, "Optional root cgroup to use for pods. This is handled by the container runtime on a best effort basis. Default: '', which means use the container runtime default.")
 	fs.StringVar(&s.ContainerRuntime, "container-runtime", s.ContainerRuntime, "The container runtime to use. Possible values: 'docker', 'rkt'. Default: 'docker'.")
 	fs.StringVar(&s.LockFilePath, "lock-file", s.LockFilePath, "<Warning: Alpha feature> The path to file for kubelet to use as a lock file.")

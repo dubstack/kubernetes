@@ -204,6 +204,7 @@ func NewMainKubelet(
 	nodeLabels map[string]string,
 	nodeStatusUpdateFrequency time.Duration,
 	osInterface kubecontainer.OSInterface,
+	enableQosCgroups bool,
 	cgroupRoot string,
 	containerRuntime string,
 	rktPath string,
@@ -335,6 +336,7 @@ func NewMainKubelet(
 		nodeStatusUpdateFrequency:      nodeStatusUpdateFrequency,
 		os:                         osInterface,
 		oomWatcher:                 oomWatcher,
+		enableQosCgroups:           enableQosCgroups,
 		cgroupRoot:                 cgroupRoot,
 		mounter:                    mounter,
 		writer:                     writer,
@@ -724,6 +726,9 @@ type Kubelet struct {
 
 	// Monitor resource usage
 	resourceAnalyzer stats.ResourceAnalyzer
+
+	// Whether or not we should have the QOS cgroup Hierarchy for resource Management
+	enableQosCgroups bool
 
 	// If non-empty, pass this to the container runtime as the root cgroup.
 	cgroupRoot string
