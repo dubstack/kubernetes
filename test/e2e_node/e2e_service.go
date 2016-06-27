@@ -235,6 +235,8 @@ func (es *e2eService) startKubeletServer() (*killCmd, error) {
 		"--v", LOG_VERBOSITY_LEVEL, "--logtostderr",
 		"--network-plugin=kubenet",
 		"--pod-cidr=10.180.0.0/24", // Assign a fixed CIDR to the node because there is no node controller.
+		"--cgroups-per-qos", "true",
+		"--cgroups-root", "/",
 	)
 	cmd := exec.Command("sudo", cmdArgs...)
 	hcc := newHealthCheckCommand(

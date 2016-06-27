@@ -202,7 +202,7 @@ func UnsecuredKubeletConfig(s *options.KubeletServer) (*KubeletConfig, error) {
 		Auth:                         nil, // default does not enforce auth[nz]
 		CAdvisorInterface:            nil, // launches background processes, not set here
 		VolumeStatsAggPeriod:         s.VolumeStatsAggPeriod.Duration,
-		CgroupRoot:                   s.CgroupRoot,
+		CgroupsRoot:                  s.CgroupsRoot,
 		Cloud:                        nil, // cloud provider might start background processes
 		ClusterDNS:                   net.ParseIP(s.ClusterDNS),
 		ClusterDomain:                s.ClusterDomain,
@@ -219,6 +219,7 @@ func UnsecuredKubeletConfig(s *options.KubeletServer) (*KubeletConfig, error) {
 		EnableControllerAttachDetach: s.EnableControllerAttachDetach,
 		EnableCustomMetrics:          s.EnableCustomMetrics,
 		EnableDebuggingHandlers:      s.EnableDebuggingHandlers,
+		CgroupsPerQOS:                s.CgroupsPerQOS,
 		EnableServer:                 s.EnableServer,
 		EventBurst:                   int(s.EventBurst),
 		EventRecordQPS:               s.EventRecordQPS,
@@ -359,15 +360,16 @@ func run(s *options.KubeletServer, kcfg *KubeletConfig) (err error) {
 	}
 
 	if kcfg.ContainerManager == nil {
-		if kcfg.SystemCgroups != "" && kcfg.CgroupRoot == "" {
+		if kcfg.SystemCgroups != "" && kcfg.CgroupsRoot == "" {
 			return fmt.Errorf("invalid configuration: system container was specified and cgroup root was not specified")
 		}
-
 		kcfg.ContainerManager, err = cm.NewContainerManager(kcfg.Mounter, kcfg.CAdvisorInterface, cm.NodeConfig{
 			RuntimeCgroupsName: kcfg.RuntimeCgroups,
 			SystemCgroupsName:  kcfg.SystemCgroups,
 			KubeletCgroupsName: kcfg.KubeletCgroups,
 			ContainerRuntime:   kcfg.ContainerRuntime,
+			CgroupsPerQOS:      kcfg.CgroupsPerQOS,
+			CgroupsRoot:        kcfg.CgroupsRoot,
 		})
 		if err != nil {
 			return err
@@ -557,7 +559,7 @@ func SimpleKubelet(client *clientset.Clientset,
 		Address:                      net.ParseIP(address),
 		CAdvisorInterface:            cadvisorInterface,
 		VolumeStatsAggPeriod:         time.Minute,
-		CgroupRoot:                   "",
+		CgroupsRoot:                  "",
 		Cloud:                        cloud,
 		ClusterDNS:                   clusterDNS,
 		ConfigFile:                   configFilePath,
@@ -572,6 +574,7 @@ func SimpleKubelet(client *clientset.Clientset,
 		EnableCustomMetrics:          false,
 		EnableDebuggingHandlers:      true,
 		EnableServer:                 true,
+		CgroupsPerQOS:                false,
 		FileCheckFrequency:           fileCheckFrequency,
 		// Since this kubelet runs with --configure-cbr0=false, it needs to use
 		// hairpin-veth to allow hairpin packets. Note that this deviates from
@@ -778,7 +781,7 @@ type KubeletConfig struct {
 	Builder                        KubeletBuilder
 	CAdvisorInterface              cadvisor.Interface
 	VolumeStatsAggPeriod           time.Duration
-	CgroupRoot                     string
+	CgroupsRoot                    string
 	Cloud                          cloudprovider.Interface
 	ClusterDNS                     net.IP
 	ClusterDomain                  string
@@ -795,6 +798,7 @@ type KubeletConfig struct {
 	EnableControllerAttachDetach   bool
 	EnableCustomMetrics            bool
 	EnableDebuggingHandlers        bool
+	CgroupsPerQOS                  bool
 	EnableServer                   bool
 	EventClient                    *clientset.Clientset
 	EventBurst                     int
@@ -926,7 +930,8 @@ func CreateAndInitKubelet(kc *KubeletConfig) (k KubeletBootstrap, pc *config.Pod
 		kc.NodeLabels,
 		kc.NodeStatusUpdateFrequency,
 		kc.OSInterface,
-		kc.CgroupRoot,
+		kc.CgroupsPerQOS,
+		kc.CgroupsRoot,
 		kc.ContainerRuntime,
 		kc.RuntimeRequestTimeout,
 		kc.RktPath,

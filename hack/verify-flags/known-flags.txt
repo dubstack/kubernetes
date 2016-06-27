@@ -41,7 +41,8 @@ build-tag
 cadvisor-port
 cert-dir
 certificate-authority
-cgroup-root
+cgroups-per-qos
+cgroups-root
 chaos-chance
 clean-start
 cleanup

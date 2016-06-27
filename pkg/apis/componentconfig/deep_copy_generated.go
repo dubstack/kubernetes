@@ -270,9 +270,10 @@ func DeepCopy_componentconfig_KubeletConfiguration(in KubeletConfiguration, out 
 	out.CloudProvider = in.CloudProvider
 	out.CloudConfigFile = in.CloudConfigFile
 	out.KubeletCgroups = in.KubeletCgroups
+	out.CgroupsPerQOS = in.CgroupsPerQOS
 	out.RuntimeCgroups = in.RuntimeCgroups
 	out.SystemCgroups = in.SystemCgroups
-	out.CgroupRoot = in.CgroupRoot
+	out.CgroupsRoot = in.CgroupsRoot
 	out.ContainerRuntime = in.ContainerRuntime
 	if err := unversioned.DeepCopy_unversioned_Duration(in.RuntimeRequestTimeout, &out.RuntimeRequestTimeout, c); err != nil {
 		return err

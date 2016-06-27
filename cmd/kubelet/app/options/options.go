@@ -84,7 +84,7 @@ func NewKubeletServer() *KubeletServer {
 			CAdvisorPort:                 4194,
 			VolumeStatsAggPeriod:         unversioned.Duration{Duration: time.Minute},
 			CertDirectory:                "/var/run/kubernetes",
-			CgroupRoot:                   "",
+			CgroupsRoot:                  "",
 			CloudProvider:                AutoDetectCloudProvider,
 			ConfigureCBR0:                false,
 			ContainerRuntime:             "docker",
@@ -96,6 +96,7 @@ func NewKubeletServer() *KubeletServer {
 			EnableControllerAttachDetach: true,
 			EnableCustomMetrics:          false,
 			EnableDebuggingHandlers:      true,
+			CgroupsPerQOS:                false,
 			EnableServer:                 true,
 			FileCheckFrequency:           unversioned.Duration{Duration: 20 * time.Second},
 			HealthzBindAddress:           "127.0.0.1",
@@ -232,7 +233,8 @@ func (s *KubeletServer) AddFlags(fs *pflag.FlagSet) {
 	fs.MarkDeprecated("system-container", "Use --system-cgroups instead. Will be removed in a future version.")
 	fs.StringVar(&s.SystemCgroups, "system-cgroups", s.SystemCgroups, "Optional absolute name of cgroups in which to place all non-kernel processes that are not already inside a cgroup under `/`. Empty for no container. Rolling back the flag requires a reboot. (Default: \"\").")
 
-	fs.StringVar(&s.CgroupRoot, "cgroup-root", s.CgroupRoot, "Optional root cgroup to use for pods. This is handled by the container runtime on a best effort basis. Default: '', which means use the container runtime default.")
+	fs.BoolVar(&s.CgroupsPerQOS, "cgroups-per-qos", s.CgroupsPerQOS, "Whether the Kubelet should have the QoS cgroup hierarchy, if true top level qos and pod cgroups are created. Default: false")
+	fs.StringVar(&s.CgroupsRoot, "cgroups-root", s.CgroupsRoot, "Optional root cgroup to use for pods. This is handled by the container runtime on a best effort basis. Default: '', which means use the container runtime default.")
 	fs.StringVar(&s.ContainerRuntime, "container-runtime", s.ContainerRuntime, "The container runtime to use. Possible values: 'docker', 'rkt'. Default: 'docker'.")
 	fs.DurationVar(&s.RuntimeRequestTimeout.Duration, "runtime-request-timeout", s.RuntimeRequestTimeout.Duration, "Timeout of all runtime requests except long running request - pull, logs, exec and attach. When timeout exceeded, kubelet will cancel the request, throw out an error and retry later. Default: 2m0s")
 	fs.StringVar(&s.LockFilePath, "lock-file", s.LockFilePath, "<Warning: Alpha feature> The path to file for kubelet to use as a lock file.")

@@ -205,7 +205,8 @@ func NewMainKubelet(
 	nodeLabels map[string]string,
 	nodeStatusUpdateFrequency time.Duration,
 	osInterface kubecontainer.OSInterface,
-	cgroupRoot string,
+	CgroupsPerQOS bool,
+	cgroupsRoot string,
 	containerRuntime string,
 	runtimeRequestTimeout time.Duration,
 	rktPath string,
@@ -338,7 +339,8 @@ func NewMainKubelet(
 		nodeStatusUpdateFrequency: nodeStatusUpdateFrequency,
 		os:                         osInterface,
 		oomWatcher:                 oomWatcher,
-		cgroupRoot:                 cgroupRoot,
+		CgroupsPerQOS:              CgroupsPerQOS,
+		cgroupsRoot:                cgroupsRoot,
 		mounter:                    mounter,
 		writer:                     writer,
 		configureCBR0:              configureCBR0,
@@ -739,8 +741,11 @@ type Kubelet struct {
 	// Monitor resource usage
 	resourceAnalyzer stats.ResourceAnalyzer
 
+	// Whether or not we should have the QOS cgroup Hierarchy for resource management
+	CgroupsPerQOS bool
+
 	// If non-empty, pass this to the container runtime as the root cgroup.
-	cgroupRoot string
+	cgroupsRoot string
 
 	// Mounter to use for volumes.
 	mounter mount.Interface
@@ -1430,7 +1435,7 @@ func (kl *Kubelet) GeneratePodHostNameAndDomain(pod *api.Pod) (string, string, e
 // the container runtime to set parameters for launching a container.
 func (kl *Kubelet) GenerateRunContainerOptions(pod *api.Pod, container *api.Container, podIP string) (*kubecontainer.RunContainerOptions, error) {
 	var err error
-	opts := &kubecontainer.RunContainerOptions{CgroupParent: kl.cgroupRoot}
+	opts := &kubecontainer.RunContainerOptions{CgroupParent: kl.cgroupsRoot}
 	hostname, hostDomainName, err := kl.GeneratePodHostNameAndDomain(pod)
 	if err != nil {
 		return nil, err
