@@ -16,6 +16,8 @@ limitations under the License.
 
 package cm
 
+import "k8s.io/kubernetes/pkg/api"
+
 // ResourceConfig holds information about all the supported cgroup resource parameters.
 type ResourceConfig struct {
 	// Memory limit (in bytes).
@@ -53,11 +55,31 @@ type CgroupManager interface {
 	Destroy(*CgroupConfig) error
 	// Update cgroup configuration.
 	Update(*CgroupConfig) error
+	// AlreadyExists checks if the cgroup already exists
+	AlreadyExists(string) bool
 }
 
-// QOSContainersInfo hold the names of containers per qos
+// QOSContainersInfo holds the names of containers per qos
 type QOSContainersInfo struct {
 	Guaranteed string
 	BestEffort string
 	Burstable  string
+}
+
+// PodContainerManager stores and manages pod level containers
+// The Pod workers interact with the PodContainerManager to create and destroy
+// containers for the pod.
+type PodContainerManager interface {
+	// getPodContainerName returns the pod container's absolute name
+	GetPodContainerName(*api.Pod) string
+
+	// EnsureExists takes a pod as argument and makes sure that
+	// pod cgroup exists if qos cgroup hierarchy flag is enabled.
+	// If the pod cgroup doesen't already exist this method creates it.
+	EnsureExists(*api.Pod, []*api.Pod) error
+
+	AlreadyExists(*api.Pod) bool
+
+	//Destroy takes a pod as argument and destorys the pod's container.
+	Destroy(*api.Pod) error
 }

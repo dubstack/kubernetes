@@ -18,28 +18,25 @@ limitations under the License.
 
 package cm
 
-import "fmt"
+import "k8s.io/kubernetes/pkg/api"
 
-type unsupportedCgroupManager struct{}
-
-// Make sure that unsupportedCgroupManager implements the CgroupManager interface
-var _ CgroupManager = &unsupportedCgroupManager{}
-
-func NewCgroupManager(_ interface{}) CgroupManager {
-	return &unsupportedCgroupManager{}
-}
-func (m *unsupportedCgroupManager) AlreadyExists(_ string) bool {
-	return false
+type unsupportedPodContainerManager struct {
 }
 
-func (m *unsupportedCgroupManager) Destroy(_ *CgroupConfig) error {
+var _ PodContainerManager = &unsupportedPodContainerManager{}
+
+func (m *unsupportedPodContainerManager) AlreadyExists(_ *api.Pod) bool {
+	return true
+}
+
+func (m *unsupportedPodContainerManager) EnsureExists(_ *api.Pod, _ *api.Pod) error {
 	return nil
 }
 
-func (m *unsupportedCgroupManager) Update(_ *CgroupConfig) error {
-	return nil
+func (m *unsupportedPodContainerManager) GetPodContainerName(_ *api.Pod) string {
+	return ""
 }
 
-func (m *unsupportedCgroupManager) Create(_ *CgroupConfig) error {
-	return fmt.Errorf("Cgroup Manager is not supported in this build")
+func (m *unsupportedPodContainerManager) Destroy(_ *api.Pod) error {
+	return nil
 }

@@ -18,7 +18,9 @@ package cm
 
 import (
 	"fmt"
+	"path"
 
+	libcontainercgroups "github.com/opencontainers/runc/libcontainer/cgroups"
 	libcontainerconfigs "github.com/opencontainers/runc/libcontainer/configs"
 )
 
@@ -40,6 +42,21 @@ func NewCgroupManager(cs *cgroupSubsystems) CgroupManager {
 	return &cgroupManagerImpl{
 		subsystems: cs,
 	}
+}
+
+// AlreadyExists checks if the cgroup already exists
+func (m *cgroupManagerImpl) AlreadyExists(name string) bool {
+	// Get map of all cgroup paths on the system for the particular cgroup
+	cgroupPaths := make(map[string]string, len(m.subsystems.mountPoints))
+	for key, val := range m.subsystems.mountPoints {
+		cgroupPaths[key] = path.Join(val, name)
+	}
+	for _, path := range cgroupPaths {
+		if !libcontainercgroups.PathExists(path) {
+			return false
+		}
+	}
+	return true
 }
 
 // Destroy destroys the specified cgroup
