@@ -241,6 +241,8 @@ func (es *e2eService) startKubeletServer() (*killCmd, error) {
 		"--config", es.kubeletStaticPodDir,
 		"--file-check-frequency", "10s", // Check file frequently so tests won't wait too long
 		"--v", LOG_VERBOSITY_LEVEL, "--logtostderr",
+		"--cgroup-per-qos", "true",
+		"--cgroup-root", "/",
 	)
 	cmd := exec.Command("sudo", cmdArgs...)
 	hcc := newHealthCheckCommand(

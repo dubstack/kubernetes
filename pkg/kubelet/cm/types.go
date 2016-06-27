@@ -54,3 +54,10 @@ type CgroupManager interface {
 	// Update cgroup configuration.
 	Update(*CgroupConfig) error
 }
+
+// QOSContainersInfo hold the names of containers per qos
+type QOSContainersInfo struct {
+	Guaranteed string
+	BestEffort string
+	Burstable  string
+}

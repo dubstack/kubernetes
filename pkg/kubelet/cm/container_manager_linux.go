@@ -37,6 +37,7 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/resource"
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
+	"k8s.io/kubernetes/pkg/kubelet/qos"
 	"k8s.io/kubernetes/pkg/util"
 	utilerrors "k8s.io/kubernetes/pkg/util/errors"
 	"k8s.io/kubernetes/pkg/util/mount"
@@ -97,7 +98,10 @@ type containerManagerImpl struct {
 	status Status
 	// External containers being managed.
 	systemContainers []*systemContainer
+	qosContainers    QOSContainersInfo
 	periodicTasks    []func()
+	// holds all the mounted cgroup subsytems
+	subsystems *cgroupSubsystems
 }
 
 type features struct {
@@ -161,10 +165,15 @@ func validateSystemRequirements(mountUtil mount.Interface) (features, error) {
 // Takes the absolute name of the specified containers.
 // Empty container name disables use of the specified container.
 func NewContainerManager(mountUtil mount.Interface, cadvisorInterface cadvisor.Interface, nodeConfig NodeConfig) (ContainerManager, error) {
+	subsystems, err := getCgroupSubsystems()
+	if err != nil {
+		return &containerManagerImpl{}, fmt.Errorf("Failed to get mounted subsystems: %v", err)
+	}
 	return &containerManagerImpl{
 		cadvisorInterface: cadvisorInterface,
 		mountUtil:         mountUtil,
 		NodeConfig:        nodeConfig,
+		subsystems:        subsystems,
 	}, nil
 }
 
@@ -189,6 +198,38 @@ const (
 	KernelTunableError  KernelTunableBehavior = "error"
 	KernelTunableModify KernelTunableBehavior = "modify"
 )
+
+// InitQOS creates the top level qos cgroup containers
+// We currently create containers for the Burstable and Best Effort containers
+// All guaranteed pods are nested under the RootContainer by default
+// InitQOS is called only once during kubelet bootstrapping.
+func InitQOS(rootContainer string, subsystems *cgroupSubsystems) (QOSContainersInfo, error) {
+	cm := NewCgroupManager(subsystems)
+	// Top level for Qos containers are created only for Burstable
+	// and Best Effort classes
+	qosClasses := [2]qos.QOSClass{qos.Burstable, qos.BestEffort}
+
+	// Create containers for both qos classes
+	for _, qosClass := range qosClasses {
+		//get the containers absolute name
+		absoluteContainerName := path.Join(rootContainer, string(qosClass))
+		// containerConfig object stores the cgroup specifications
+		containerConfig := &CgroupConfig{
+			Name:               absoluteContainerName,
+			ResourceParameters: &ResourceConfig{},
+		}
+		if err := cm.Create(containerConfig); err != nil {
+			return QOSContainersInfo{}, fmt.Errorf("Failed to create top level %v QOS cgroup : %v", qosClass, err)
+		}
+	}
+	// Store the top level qos container names
+	qosContainersInfo := QOSContainersInfo{}
+	qosContainersInfo.Guaranteed = rootContainer
+	qosContainersInfo.Burstable = path.Join(rootContainer, string(qos.Burstable))
+	qosContainersInfo.BestEffort = path.Join(rootContainer, string(qos.BestEffort))
+
+	return qosContainersInfo, nil
+}
 
 // setupKernelTunables validates kernel tunable flags are set as expected
 // depending upon the specified option, it will either warn, error, or modify the kernel tunable flags
@@ -238,6 +279,15 @@ func (cm *containerManagerImpl) setupNode() error {
 	// TODO: plumb kernel tunable options into container manager, right now, we modify by default
 	if err := setupKernelTunables(KernelTunableModify); err != nil {
 		return err
+	}
+
+	// Setup top level qos containers only if CgroupPerQOS flag is specified as true
+	if cm.NodeConfig.CgroupPerQOS {
+		qosContainersInfo, err := InitQOS(cm.NodeConfig.CgroupRoot, cm.subsystems)
+		if err != nil {
+			return fmt.Errorf("Failed to initialise top level QOS containers: %v", err)
+		}
+		cm.qosContainers = qosContainersInfo
 	}
 
 	systemContainers := []*systemContainer{}

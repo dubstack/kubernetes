@@ -219,6 +219,7 @@ func UnsecuredKubeletConfig(s *options.KubeletServer) (*KubeletConfig, error) {
 		EnableControllerAttachDetach: s.EnableControllerAttachDetach,
 		EnableCustomMetrics:          s.EnableCustomMetrics,
 		EnableDebuggingHandlers:      s.EnableDebuggingHandlers,
+		CgroupPerQOS:                 s.CgroupPerQOS,
 		EnableServer:                 s.EnableServer,
 		EventBurst:                   int(s.EventBurst),
 		EventRecordQPS:               s.EventRecordQPS,
@@ -358,12 +359,16 @@ func run(s *options.KubeletServer, kcfg *KubeletConfig) (err error) {
 		if kcfg.SystemCgroups != "" && kcfg.CgroupRoot == "" {
 			return fmt.Errorf("invalid configuration: system container was specified and cgroup root was not specified")
 		}
-
+		if kcfg.CgroupPerQOS && kcfg.CgroupRoot == "" {
+			return fmt.Errorf("invalid configuration: CgroupPerQOS was specified and cgroup root was not specified. To enable the QoS cgroup hierarchy you need tp specify a valid cgroupRoot")
+		}
 		kcfg.ContainerManager, err = cm.NewContainerManager(kcfg.Mounter, kcfg.CAdvisorInterface, cm.NodeConfig{
 			RuntimeCgroupsName: kcfg.RuntimeCgroups,
 			SystemCgroupsName:  kcfg.SystemCgroups,
 			KubeletCgroupsName: kcfg.KubeletCgroups,
 			ContainerRuntime:   kcfg.ContainerRuntime,
+			CgroupPerQOS:       kcfg.CgroupPerQOS,
+			CgroupRoot:         kcfg.CgroupRoot,
 		})
 		if err != nil {
 			return err
@@ -572,6 +577,7 @@ func SimpleKubelet(client *clientset.Clientset,
 		EnableCustomMetrics:          false,
 		EnableDebuggingHandlers:      true,
 		EnableServer:                 true,
+		CgroupPerQOS:                 false,
 		FileCheckFrequency:           fileCheckFrequency,
 		// Since this kubelet runs with --configure-cbr0=false, it needs to use
 		// hairpin-veth to allow hairpin packets. Note that this deviates from
@@ -793,6 +799,7 @@ type KubeletConfig struct {
 	EnableControllerAttachDetach   bool
 	EnableCustomMetrics            bool
 	EnableDebuggingHandlers        bool
+	CgroupPerQOS                   bool
 	EnableServer                   bool
 	EventClient                    *clientset.Clientset
 	EventBurst                     int
@@ -923,6 +930,7 @@ func CreateAndInitKubelet(kc *KubeletConfig) (k KubeletBootstrap, pc *config.Pod
 		kc.NodeLabels,
 		kc.NodeStatusUpdateFrequency,
 		kc.OSInterface,
+		kc.CgroupPerQOS,
 		kc.CgroupRoot,
 		kc.ContainerRuntime,
 		kc.RuntimeRequestTimeout,

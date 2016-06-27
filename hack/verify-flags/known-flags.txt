@@ -40,6 +40,7 @@ build-services
 cadvisor-port
 cert-dir
 certificate-authority
+cgroup-per-qos
 cgroup-root
 chaos-chance
 clean-start
