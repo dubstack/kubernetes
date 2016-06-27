@@ -31,7 +31,7 @@ type unsupportedContainerManager struct {
 
 var _ ContainerManager = &unsupportedContainerManager{}
 
-func (unsupportedContainerManager) Start() error {
+func (unsupportedContainerManager) Start(_ *api.Node) error {
 	return fmt.Errorf("Container Manager is unsupported in this build")
 }
 
@@ -45,6 +45,10 @@ func (unsupportedContainerManager) GetNodeConfig() NodeConfig {
 
 func (cm *unsupportedContainerManager) Status() Status {
 	return Status{}
+}
+
+func (cm *unsupportedContainerManager) NewPodContainerManager() PodContainerManager {
+	return podContainerManagerNoop{}
 }
 
 func NewContainerManager(_ mount.Interface, _ cadvisor.Interface, _ NodeConfig) (ContainerManager, error) {

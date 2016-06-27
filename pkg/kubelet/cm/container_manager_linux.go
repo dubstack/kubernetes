@@ -102,6 +102,7 @@ type containerManagerImpl struct {
 	periodicTasks    []func()
 	// holds all the mounted cgroup subsystems
 	subsystems *cgroupSubsystems
+	nodeInfo   *api.Node
 }
 
 type features struct {
@@ -161,6 +162,19 @@ func validateSystemRequirements(mountUtil mount.Interface) (features, error) {
 	return f, nil
 }
 
+// Create a cgroup container manager.
+func createManager(containerName string) *fs.Manager {
+	return &fs.Manager{
+		Cgroups: &configs.Cgroup{
+			Parent: "/",
+			Name:   containerName,
+			Resources: &configs.Resources{
+				AllowAllDevices: true,
+			},
+		},
+	}
+}
+
 // TODO(vmarmol): Add limits to the system containers.
 // Takes the absolute name of the specified containers.
 // Empty container name disables use of the specified container.
@@ -186,16 +200,19 @@ func NewContainerManager(mountUtil mount.Interface, cadvisorInterface cadvisor.I
 	}, nil
 }
 
-// Create a cgroup container manager.
-func createManager(containerName string) *fs.Manager {
-	return &fs.Manager{
-		Cgroups: &configs.Cgroup{
-			Parent: "/",
-			Name:   containerName,
-			Resources: &configs.Resources{
-				AllowAllDevices: true,
-			},
-		},
+// NewPodContainerManager is a factory method
+// If qosCgroups are enabled then it returns the general pod container manager
+// otherwise it returns a manager no-op which does nothing
+func (cm *containerManagerImpl) NewPodContainerManager() PodContainerManager {
+	if cm.NodeConfig.CgroupPerQOS {
+		return &podContainerManagerNoop{
+			cgroupRoot: cm.NodeConfig.CgroupRoot,
+		}
+	}
+	return &podContainerManagerImpl{
+		qosContainersInfo: cm.qosContainers,
+		nodeInfo:          cm.nodeInfo,
+		subsystems:        cm.subsystems,
 	}
 }
 
@@ -425,7 +442,10 @@ func (cm *containerManagerImpl) Status() Status {
 	return cm.status
 }
 
-func (cm *containerManagerImpl) Start() error {
+func (cm *containerManagerImpl) Start(node *api.Node) error {
+	// cache the node Info including resource capacity and
+	// allocatable of the node
+	cm.nodeInfo = node
 	// Setup the node
 	if err := cm.setupNode(); err != nil {
 		return err

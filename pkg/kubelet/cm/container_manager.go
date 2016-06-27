@@ -25,7 +25,7 @@ type ContainerManager interface {
 	// Runs the container manager's housekeeping.
 	// - Ensures that the Docker daemon is in a container.
 	// - Creates the system container where all non-containerized processes run.
-	Start() error
+	Start(*api.Node) error
 
 	// Returns resources allocated to system cgroups in the machine.
 	// These cgroups include the system and Kubernetes services.
@@ -36,6 +36,10 @@ type ContainerManager interface {
 
 	// Returns internal Status.
 	Status() Status
+
+	// Factory method which returns a pod container manager object
+	// Returns a noop implementation if qos cgroup hierarchy is not enabled
+	NewPodContainerManager() PodContainerManager
 }
 
 type NodeConfig struct {

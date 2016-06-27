@@ -25,7 +25,7 @@ type containerManagerStub struct{}
 
 var _ ContainerManager = &containerManagerStub{}
 
-func (cm *containerManagerStub) Start() error {
+func (cm *containerManagerStub) Start(_ *api.Node) error {
 	glog.V(2).Infof("Starting stub container manager")
 	return nil
 }
@@ -40,6 +40,10 @@ func (cm *containerManagerStub) GetNodeConfig() NodeConfig {
 
 func (cm *containerManagerStub) Status() Status {
 	return Status{}
+}
+
+func (cm *containerManagerStub) NewPodContainerManager() PodContainerManager {
+	return &podContainerManagerNoop{}
 }
 
 func NewStubContainerManager() ContainerManager {
