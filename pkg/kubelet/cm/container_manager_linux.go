@@ -196,14 +196,14 @@ func NewContainerManager(mountUtil mount.Interface, cadvisorInterface cadvisor.I
 // otherwise it returns a manager no-op which does nothing
 func (cm *containerManagerImpl) NewPodContainerManager() PodContainerManager {
 	if cm.NodeConfig.CgroupPerQOS {
-		return &podContainerManagerNoop{
-			cgroupRoot: cm.NodeConfig.CgroupRoot,
+		return &podContainerManagerImpl{
+			qosContainersInfo: cm.qosContainers,
+			nodeInfo:          cm.nodeInfo,
+			subsystems:        cm.subsystems,
 		}
 	}
-	return &podContainerManagerImpl{
-		qosContainersInfo: cm.qosContainers,
-		nodeInfo:          cm.nodeInfo,
-		subsystems:        cm.subsystems,
+	return &podContainerManagerNoop{
+		cgroupRoot: cm.NodeConfig.CgroupRoot,
 	}
 }
 

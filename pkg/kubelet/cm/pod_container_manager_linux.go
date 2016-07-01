@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"path"
 
+	"github.com/golang/glog"
+
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/kubelet/qos"
 )
@@ -63,6 +65,7 @@ func (m *podContainerManagerImpl) AlreadyExists(pod *api.Pod) bool {
 // If the pod level container doesen't already exist it is created.
 func (m *podContainerManagerImpl) EnsureExists(pod *api.Pod, allPods []*api.Pod) error {
 	podContainerName := m.GetPodContainerName(pod)
+	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK %v %v", podContainerName)
 	cm := NewCgroupManager(m.subsystems)
 	// check if container already exist
 	alreadyExists := m.AlreadyExists(pod)

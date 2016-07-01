@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"path"
 
+	"github.com/golang/glog"
+
 	libcontainercgroups "github.com/opencontainers/runc/libcontainer/cgroups"
 	libcontainerconfigs "github.com/opencontainers/runc/libcontainer/configs"
 )
@@ -51,8 +53,11 @@ func (m *cgroupManagerImpl) AlreadyExists(name string) bool {
 	for key, val := range m.subsystems.mountPoints {
 		cgroupPaths[key] = path.Join(val, name)
 	}
+	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK Name %v", name)
+
 	for _, path := range cgroupPaths {
 		if !libcontainercgroups.PathExists(path) {
+			glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK Path %v", path)
 			return false
 		}
 	}
@@ -68,7 +73,7 @@ func (m *cgroupManagerImpl) Destroy(cgroupConfig *CgroupConfig) error {
 	fsCgroupManager, err := getLibcontainerCgroupManager(cgroupConfig, m.subsystems)
 
 	if err != nil {
-		return fmt.Errorf("Unable to destroy cgroup paths for cgroup %v : %v", name, err)
+		return fmt.Errorf("Failed to get libcontainer Cgroup Manager for %v : %v", name, err)
 	}
 	// Delete cgroups using libcontainers Managers Destroy() method
 	if err := fsCgroupManager.Destroy(); err != nil {
@@ -85,7 +90,7 @@ func (m *cgroupManagerImpl) Update(cgroupConfig *CgroupConfig) error {
 	// get the fscgroup Manager with the specified cgroup configuration
 	fsCgroupManager, err := getLibcontainerCgroupManager(cgroupConfig, m.subsystems)
 	if err != nil {
-		return fmt.Errorf("Failed to update cgroup for %v : %v", name, err)
+		return fmt.Errorf("Failed to get libcontainer Cgroup Manager for %v : %v", name, err)
 	}
 	// get config object for passing to Set()
 	config := &libcontainerconfigs.Config{
@@ -94,7 +99,7 @@ func (m *cgroupManagerImpl) Update(cgroupConfig *CgroupConfig) error {
 
 	// Update cgroup configuration using libcontainers Managers Set() method
 	if err := fsCgroupManager.Set(config); err != nil {
-		return fmt.Errorf("Failed to update cgroup for %v: %v", name, err)
+		return fmt.Errorf("Failed to Set cgroup config for %v: %v", name, err)
 	}
 	return nil
 }
@@ -107,7 +112,7 @@ func (m *cgroupManagerImpl) Create(cgroupConfig *CgroupConfig) error {
 	// get the fscgroup Manager with the specified cgroup configuration
 	fsCgroupManager, err := getLibcontainerCgroupManager(cgroupConfig, m.subsystems)
 	if err != nil {
-		return fmt.Errorf("Failed to create cgroup for %v : %v", name, err)
+		return fmt.Errorf("Failed to get libcontainer Cgroup Manager for %v : %v", name, err)
 	}
 	// get config object for passing to libcontainer's Set() method
 	config := &libcontainerconfigs.Config{
@@ -120,11 +125,11 @@ func (m *cgroupManagerImpl) Create(cgroupConfig *CgroupConfig) error {
 	// in the tasks file. We use the function to create all the required
 	// cgroup files but not attach any "real" pid to the cgroup.
 	if err := fsCgroupManager.Apply(0); err != nil {
-		return fmt.Errorf("Failed to create cgroup for %v: %v", name, err)
+		return fmt.Errorf("Failed to apply cgroup config for %v: %v", name, err)
 	}
 	// Update cgroup configuration using libcontainers Managers Set() method
 	if err := fsCgroupManager.Set(config); err != nil {
-		return fmt.Errorf("Failed to create cgroup for %v: %v", name, err)
+		return fmt.Errorf("Failed to Set cgroup config for %v: %v", name, err)
 	}
 	return nil
 }

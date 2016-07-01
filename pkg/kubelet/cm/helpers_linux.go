@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"path"
 
+	"github.com/golang/glog"
+
 	libcontainercgroups "github.com/opencontainers/runc/libcontainer/cgroups"
 	cgroupfs "github.com/opencontainers/runc/libcontainer/cgroups/fs"
 	libcontainerconfigs "github.com/opencontainers/runc/libcontainer/configs"
@@ -41,19 +43,28 @@ func getCgroupSubsystems() (*cgroupSubsystems, error) {
 	// Get all cgroup mounts.
 	allCgroups, err := libcontainercgroups.GetCgroupMounts()
 	if err != nil {
-		return &cgroupSubsystems{}, err
+		return &cgroupSubsystems{}, fmt.Errorf("Failed to get the cgroup mounts on the system: %v", err)
 	}
 	if len(allCgroups) == 0 {
-		return &cgroupSubsystems{}, fmt.Errorf("failed to find cgroup mounts")
+		return &cgroupSubsystems{}, fmt.Errorf("Failed to find the cgroup mounts")
 	}
-
-	//TODO(@dubstack) should we trim to only the supported ones
+	subsystems, err := libcontainercgroups.GetAllSubsystems()
+	if err != nil {
+		return &cgroupSubsystems{}, fmt.Errorf("Failed to get all subsystems supported by the kernel: %v", err)
+	}
+	subsystemsMap := make(map[string]bool, len(subsystems))
+	for _, subsystem := range subsystems {
+		subsystemsMap[subsystem] = true
+	}
 	mountPoints := make(map[string]string, len(allCgroups))
 	for _, mount := range allCgroups {
 		for _, subsystem := range mount.Subsystems {
-			mountPoints[subsystem] = mount.Mountpoint
+			if exists, _ := subsystemsMap[subsystem]; exists {
+				mountPoints[subsystem] = mount.Mountpoint
+			}
 		}
 	}
+	glog.Infof("%v", mountPoints)
 	return &cgroupSubsystems{
 		mounts:      allCgroups,
 		mountPoints: mountPoints,

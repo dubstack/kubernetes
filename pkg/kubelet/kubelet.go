@@ -1426,7 +1426,9 @@ func (kl *Kubelet) GeneratePodHostNameAndDomain(pod *api.Pod) (string, string, e
 // the container runtime to set parameters for launching a container.
 func (kl *Kubelet) GenerateRunContainerOptions(pod *api.Pod, container *api.Container, podIP string) (*kubecontainer.RunContainerOptions, error) {
 	var err error
-	opts := &kubecontainer.RunContainerOptions{CgroupParent: kl.cgroupRoot}
+	pcm := kl.containerManager.NewPodContainerManager()
+	podContainerName := pcm.GetPodContainerName(pod)
+	opts := &kubecontainer.RunContainerOptions{CgroupParent: podContainerName}
 	hostname, hostDomainName, err := kl.GeneratePodHostNameAndDomain(pod)
 	if err != nil {
 		return nil, err
@@ -1891,6 +1893,20 @@ func (kl *Kubelet) syncPod(o syncPodOptions) error {
 		// there was no error killing the pod, but the pod cannot be run, so we return that err (if any)
 		return errOuter
 	}
+	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK Starting everything")
+	// Create Pod's Containers
+	pcm := kl.containerManager.NewPodContainerManager()
+	if !kl.podIsTerminated(pod) {
+		glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK Pod is not terminated")
+		if !pcm.AlreadyExists(pod) {
+			glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK Cgroup doesen't already exists")
+			kl.killPod(pod, nil, podStatus, nil)
+		}
+		glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK Calling ensure exists")
+		allPods := kl.getActivePods()
+		pcm.EnsureExists(pod, allPods)
+	}
+	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK We are done")
 
 	// Create Mirror Pod for Static Pod if it doesn't already exist
 	if kubepod.IsStaticPod(pod) {
