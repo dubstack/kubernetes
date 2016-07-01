@@ -43,7 +43,7 @@ func (cm *containerManagerStub) Status() Status {
 }
 
 func (cm *containerManagerStub) NewPodContainerManager() PodContainerManager {
-	return &podContainerManagerNoop{}
+	return &podContainerManagerStub{}
 }
 
 func NewStubContainerManager() ContainerManager {

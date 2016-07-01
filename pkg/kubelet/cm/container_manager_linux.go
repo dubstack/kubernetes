@@ -189,6 +189,9 @@ func NewContainerManager(mountUtil mount.Interface, cadvisorInterface cadvisor.I
 		return &containerManagerImpl{}, fmt.Errorf("invalid configuration: CgroupsPerQOS was specified and cgroup root was not specified. To enable the QoS cgroup hierarchy you need to specify a valid cgroupsRoot")
 	}
 	subsystems, err := getCgroupSubsystems()
+	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK NewContainerManager was called")
+	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK %v", subsystems)
+
 	if err != nil {
 		return &containerManagerImpl{}, fmt.Errorf("Failed to get mounted subsystems: %v", err)
 	}
@@ -204,15 +207,19 @@ func NewContainerManager(mountUtil mount.Interface, cadvisorInterface cadvisor.I
 // If qosCgroups are enabled then it returns the general pod container manager
 // otherwise it returns a manager no-op which does nothing
 func (cm *containerManagerImpl) NewPodContainerManager() PodContainerManager {
-	if cm.NodeConfig.CgroupPerQOS {
-		return &podContainerManagerNoop{
-			cgroupRoot: cm.NodeConfig.CgroupRoot,
+	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK PodContainerManager was called")
+	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK cgroups per qos : %v", cm.NodeConfig.CgroupsPerQOS)
+	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK top level qos containers created : %v", cm.qosContainers)
+	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK Node Info : %v", cm.nodeInfo)
+	if cm.NodeConfig.CgroupsPerQOS {
+		return &podContainerManagerImpl{
+			qosContainersInfo: cm.qosContainers,
+			nodeInfo:          cm.nodeInfo,
+			subsystems:        cm.subsystems,
 		}
 	}
-	return &podContainerManagerImpl{
-		qosContainersInfo: cm.qosContainers,
-		nodeInfo:          cm.nodeInfo,
-		subsystems:        cm.subsystems,
+	return &podContainerManagerNoop{
+		cgroupsRoot: cm.NodeConfig.CgroupsRoot,
 	}
 }
 
@@ -230,6 +237,7 @@ const (
 // All guaranteed pods are nested under the RootContainer by default
 // InitQOS is called only once during kubelet bootstrapping.
 func InitQOS(rootContainer string, subsystems *cgroupSubsystems) (QOSContainersInfo, error) {
+	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK Init QOS was called")
 	cm := NewCgroupManager(subsystems)
 	// Top level for Qos containers are created only for Burstable
 	// and Best Effort classes
@@ -253,7 +261,7 @@ func InitQOS(rootContainer string, subsystems *cgroupSubsystems) (QOSContainersI
 	qosContainersInfo.Guaranteed = rootContainer
 	qosContainersInfo.Burstable = path.Join(rootContainer, string(qos.Burstable))
 	qosContainersInfo.BestEffort = path.Join(rootContainer, string(qos.BestEffort))
-
+	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK qos containers created: %v", qosContainersInfo)
 	return qosContainersInfo, nil
 }
 

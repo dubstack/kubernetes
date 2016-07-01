@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"path"
 
+	"github.com/golang/glog"
+
 	libcontainercgroups "github.com/opencontainers/runc/libcontainer/cgroups"
 	cgroupfs "github.com/opencontainers/runc/libcontainer/cgroups/fs"
 	libcontainerconfigs "github.com/opencontainers/runc/libcontainer/configs"
@@ -56,8 +58,10 @@ func (m *cgroupManagerImpl) Exists(name string) bool {
 	// If even one cgroup doesn't exist we go on to create it
 	// @TODO(dubstack) We skip check for systemd until we update
 	// libcontainer in vendor
+	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK Name %v", name)
 	for key, path := range cgroupPaths {
 		if key != "systemd" && !libcontainercgroups.PathExists(path) {
+			glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK Path %v", path)
 			return false
 		}
 	}
@@ -80,6 +84,7 @@ func (m *cgroupManagerImpl) Destroy(cgroupConfig *CgroupConfig) error {
 		Name:   path.Base(name),
 		Parent: path.Dir(name),
 	}
+
 	fsCgroupManager := cgroupfs.Manager{
 		Cgroups: libcontainerCgroupConfig,
 		Paths:   cgroupPaths,

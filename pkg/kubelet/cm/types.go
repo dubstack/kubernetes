@@ -78,7 +78,7 @@ type PodContainerManager interface {
 	// If the pod cgroup doesen't already exist this method creates it.
 	EnsureExists(*api.Pod, []*api.Pod) error
 
-	AlreadyExists(*api.Pod) bool
+	Exists(*api.Pod) bool
 
 	//Destroy takes a pod as argument and destorys the pod's container.
 	Destroy(*api.Pod) error

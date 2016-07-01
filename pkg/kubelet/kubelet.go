@@ -1440,7 +1440,9 @@ func (kl *Kubelet) GeneratePodHostNameAndDomain(pod *api.Pod) (string, string, e
 // the container runtime to set parameters for launching a container.
 func (kl *Kubelet) GenerateRunContainerOptions(pod *api.Pod, container *api.Container, podIP string) (*kubecontainer.RunContainerOptions, error) {
 	var err error
-	opts := &kubecontainer.RunContainerOptions{CgroupParent: kl.cgroupsRoot}
+	pcm := kl.containerManager.NewPodContainerManager()
+	podContainerName := pcm.GetPodContainerName(pod)
+	opts := &kubecontainer.RunContainerOptions{CgroupParent: podContainerName}
 	hostname, hostDomainName, err := kl.GeneratePodHostNameAndDomain(pod)
 	if err != nil {
 		return nil, err
@@ -1786,6 +1788,7 @@ func parseResolvConf(reader io.Reader, dnsScrubber dnsScrubber) (nameservers []s
 // One of the following aruguements must be non-nil: runningPod, status.
 // TODO: Modify containerRuntime.KillPod() to accept the right arguments.
 func (kl *Kubelet) killPod(pod *api.Pod, runningPod *kubecontainer.Pod, status *kubecontainer.PodStatus, gracePeriodOverride *int64) error {
+	glog.Infof("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA We are trying to kill the pod: %v", pod)
 	var p kubecontainer.Pod
 	if runningPod != nil {
 		p = *runningPod
@@ -1837,6 +1840,8 @@ func (kl *Kubelet) makePodDataDirs(pod *api.Pod) error {
 // If any step if this workflow errors, the error is returned, and is repeated
 // on the next syncPod call.
 func (kl *Kubelet) syncPod(o syncPodOptions) error {
+	glog.Infof("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA syncPod called with syncPodOptions: %v", o)
+
 	// pull out the required options
 	pod := o.pod
 	mirrorPod := o.mirrorPod
@@ -1885,6 +1890,7 @@ func (kl *Kubelet) syncPod(o syncPodOptions) error {
 	// TODO(random-liu): After writing pod spec into container labels, check whether pod is using host network, and
 	// set pod IP to hostIP directly in runtime.GetPodStatus
 	podStatus.IP = apiPodStatus.PodIP
+	glog.Infof("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA The api Pod status %v", apiPodStatus)
 
 	// Record the time it takes for the pod to become running.
 	existingStatus, ok := kl.statusManager.GetPodStatus(pod.UID)
@@ -1905,6 +1911,29 @@ func (kl *Kubelet) syncPod(o syncPodOptions) error {
 		// there was no error killing the pod, but the pod cannot be run, so we return that err (if any)
 		return errOuter
 	}
+
+	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK Starting everything")
+	// Create Pod's Containers
+	pcm := kl.containerManager.NewPodContainerManager()
+	if pcm == nil {
+		glog.Infof("pcm is NIl")
+	} else {
+		glog.Infof("%v", pcm)
+	}
+	if !kl.podIsTerminated(pod) {
+		glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK Pod is not terminated")
+		if !pcm.Exists(pod) {
+			glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK Cgroup doesen't already exists")
+			kl.killPod(pod, nil, podStatus, nil)
+			glog.Infof("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA Kill pod function returns")
+			podSt, _ := kl.statusManager.GetPodStatus(pod.UID)
+			glog.Infof("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA Pod Status :%v", podSt)
+		}
+		allPods := kl.getActivePods()
+		glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK Number of active pods %v", len(allPods))
+		pcm.EnsureExists(pod, allPods)
+	}
+	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK We are done")
 
 	// Create Mirror Pod for Static Pod if it doesn't already exist
 	if kubepod.IsStaticPod(pod) {

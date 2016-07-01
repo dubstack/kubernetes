@@ -1217,6 +1217,7 @@ func (dm *DockerManager) KillPod(pod *api.Pod, runningPod kubecontainer.Pod, gra
 // TODO(random-liu): This is just a temporary function, will be removed when we acturally add PodSyncResult
 // NOTE(random-liu): The pod passed in could be *nil* when kubelet restarted.
 func (dm *DockerManager) killPodWithSyncResult(pod *api.Pod, runningPod kubecontainer.Pod, gracePeriodOverride *int64) (result kubecontainer.PodSyncResult) {
+	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK In killPodWithSync Result, running pod: %v", runningPod)
 	// Send the kills in parallel since they may take a long time.
 	// There may be len(runningPod.Containers) or len(runningPod.Containers)-1 of result in the channel
 	containerResults := make(chan *kubecontainer.SyncResult, len(runningPod.Containers))
@@ -1225,9 +1226,11 @@ func (dm *DockerManager) killPodWithSyncResult(pod *api.Pod, runningPod kubecont
 		networkContainer *kubecontainer.Container
 		networkSpec      *api.Container
 	)
+	glog.Infof("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA Containers to be deleted: %v", len(runningPod.Containers))
 	wg.Add(len(runningPod.Containers))
 	for _, container := range runningPod.Containers {
 		go func(container *kubecontainer.Container) {
+			glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK goroutine started %v", container)
 			defer utilruntime.HandleCrash()
 			defer wg.Done()
 
@@ -1268,7 +1271,9 @@ func (dm *DockerManager) killPodWithSyncResult(pod *api.Pod, runningPod kubecont
 			containerResults <- killContainerResult
 		}(container)
 	}
+	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK containers deleted or not deleted starts to wait")
 	wg.Wait()
+
 	close(containerResults)
 	for containerResult := range containerResults {
 		result.AddSyncResult(containerResult)
@@ -1304,6 +1309,7 @@ func (dm *DockerManager) killPodWithSyncResult(pod *api.Pod, runningPod kubecont
 // KillContainerInPod kills a container in the pod. It must be passed either a container ID or a container and pod,
 // and will attempt to lookup the other information if missing.
 func (dm *DockerManager) KillContainerInPod(containerID kubecontainer.ContainerID, container *api.Container, pod *api.Pod, message string, gracePeriodOverride *int64) error {
+	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK In killContainerInPod %v", containerID)
 	switch {
 	case containerID.IsEmpty():
 		// Locate the container.
@@ -1343,6 +1349,7 @@ func (dm *DockerManager) KillContainerInPod(containerID kubecontainer.ContainerI
 // during hard eviction scenarios.  All other code paths in kubelet must never provide a grace period override otherwise
 // data corruption could occur in the end-user application.
 func (dm *DockerManager) killContainer(containerID kubecontainer.ContainerID, container *api.Container, pod *api.Pod, reason string, gracePeriodOverride *int64) error {
+	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK In killContainer %v", containerID)
 	ID := containerID.ID
 	name := ID
 	if container != nil {
@@ -1397,7 +1404,7 @@ func (dm *DockerManager) killContainer(containerID kubecontainer.ContainerID, co
 		gracePeriod = *gracePeriodOverride
 		glog.V(2).Infof("Killing container %q, but using %d second grace period override", name, gracePeriod)
 	}
-
+	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK calling stop container")
 	err := dm.client.StopContainer(ID, int(gracePeriod))
 	if err == nil {
 		glog.V(2).Infof("Container %q exited after %s", name, unversioned.Now().Sub(start.Time))

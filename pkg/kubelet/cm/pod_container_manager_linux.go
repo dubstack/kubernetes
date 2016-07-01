@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"path"
 
+	"github.com/golang/glog"
+
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/kubelet/qos"
 )
@@ -51,11 +53,11 @@ func (m *podContainerManagerImpl) applyLimits(pod *api.Pod, allPods []*api.Pod) 
 	return nil
 }
 
-// AlreadyExists checks if the pod's cgroup already exists
-func (m *podContainerManagerImpl) AlreadyExists(pod *api.Pod) bool {
+// Exists checks if the pod's cgroup already exists
+func (m *podContainerManagerImpl) Exists(pod *api.Pod) bool {
 	podContainerName := m.GetPodContainerName(pod)
 	cm := NewCgroupManager(m.subsystems)
-	return cm.AlreadyExists(podContainerName)
+	return cm.Exists(podContainerName)
 }
 
 // EnsureExists takes a pod as argument and makes sure that
@@ -63,9 +65,10 @@ func (m *podContainerManagerImpl) AlreadyExists(pod *api.Pod) bool {
 // If the pod level container doesen't already exist it is created.
 func (m *podContainerManagerImpl) EnsureExists(pod *api.Pod, allPods []*api.Pod) error {
 	podContainerName := m.GetPodContainerName(pod)
+	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK %v %v", podContainerName)
 	cm := NewCgroupManager(m.subsystems)
 	// check if container already exist
-	alreadyExists := m.AlreadyExists(pod)
+	alreadyExists := m.Exists(pod)
 	if !alreadyExists {
 		// Create the pod container
 		containerConfig := &CgroupConfig{
@@ -86,7 +89,7 @@ func (m *podContainerManagerImpl) EnsureExists(pod *api.Pod, allPods []*api.Pod)
 
 func (m *podContainerManagerImpl) GetPodContainerName(pod *api.Pod) string {
 	// Get the QoS class of the pod.
-	podQOS := qos.GetPodQos(pod)
+	podQOS := qos.GetPodQOS(pod)
 	// Get the parent QOS container name
 	var parentContainer string
 	switch podQOS {
@@ -121,13 +124,13 @@ func (m *podContainerManagerImpl) Destroy(pod *api.Pod) error {
 // podContainerManagerNoop implements podContainerManager interface.
 // It a no op implementation and basically does nothing
 type podContainerManagerNoop struct {
-	cgroupRoot string
+	cgroupsRoot string
 }
 
 // Make sure that podContainerManagerStub implements the PodContainerManager interface
 var _ PodContainerManager = &podContainerManagerNoop{}
 
-func (m *podContainerManagerNoop) AlreadyExists(_ *api.Pod) bool {
+func (m *podContainerManagerNoop) Exists(_ *api.Pod) bool {
 	return true
 }
 func (m *podContainerManagerNoop) EnsureExists(_ *api.Pod, _ []*api.Pod) error {
@@ -135,7 +138,7 @@ func (m *podContainerManagerNoop) EnsureExists(_ *api.Pod, _ []*api.Pod) error {
 }
 
 func (m *podContainerManagerNoop) GetPodContainerName(_ *api.Pod) string {
-	return m.cgroupRoot
+	return m.cgroupsRoot
 }
 
 // Destroy destroys the pod container cgroup paths

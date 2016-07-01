@@ -48,7 +48,7 @@ func (cm *unsupportedContainerManager) Status() Status {
 }
 
 func (cm *unsupportedContainerManager) NewPodContainerManager() PodContainerManager {
-	return podContainerManagerNoop{}
+	return &unsupportedPodContainerManager{}
 }
 
 func NewContainerManager(_ mount.Interface, _ cadvisor.Interface, _ NodeConfig) (ContainerManager, error) {

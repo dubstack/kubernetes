@@ -1,5 +1,3 @@
-// +build !linux
-
 /*
 Copyright 2016 The Kubernetes Authors All rights reserved.
 
@@ -20,23 +18,23 @@ package cm
 
 import "k8s.io/kubernetes/pkg/api"
 
-type unsupportedPodContainerManager struct {
+type podContainerManagerStub struct {
 }
 
-var _ PodContainerManager = &unsupportedPodContainerManager{}
+var _ PodContainerManager = &podContainerManagerStub{}
 
-func (m *unsupportedPodContainerManager) Exists(_ *api.Pod) bool {
+func (m *podContainerManagerStub) Exists(_ *api.Pod) bool {
 	return true
 }
 
-func (m *unsupportedPodContainerManager) EnsureExists(_ *api.Pod, _ []*api.Pod) error {
+func (m *podContainerManagerStub) EnsureExists(_ *api.Pod, _ []*api.Pod) error {
 	return nil
 }
 
-func (m *unsupportedPodContainerManager) GetPodContainerName(_ *api.Pod) string {
+func (m *podContainerManagerStub) GetPodContainerName(_ *api.Pod) string {
 	return ""
 }
 
-func (m *unsupportedPodContainerManager) Destroy(_ *api.Pod) error {
+func (m *podContainerManagerStub) Destroy(_ *api.Pod) error {
 	return nil
 }
