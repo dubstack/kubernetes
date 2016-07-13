@@ -16,6 +16,11 @@ limitations under the License.
 
 package cm
 
+import (
+	libcontainercgroups "github.com/opencontainers/runc/libcontainer/cgroups"
+	"k8s.io/kubernetes/pkg/api"
+)
+
 // ResourceConfig holds information about all the supported cgroup resource parameters.
 type ResourceConfig struct {
 	// Memory limit (in bytes).
@@ -57,9 +62,38 @@ type CgroupManager interface {
 	Exists(string) bool
 }
 
-// QOSContainersInfo hold the names of containers per qos
+// QOSContainersInfo stores the names of containers per qos
 type QOSContainersInfo struct {
 	Guaranteed string
 	BestEffort string
 	Burstable  string
+}
+
+// PodContainerManager stores and manages pod level containers
+// The Pod workers interact with the PodContainerManager to create and destroy
+// containers for the pod.
+type PodContainerManager interface {
+	// getPodContainerName returns the pod container's absolute name
+	GetPodContainerName(*api.Pod) string
+
+	// EnsureExists takes a pod as argument and makes sure that
+	// pod cgroup exists if qos cgroup hierarchy flag is enabled.
+	// If the pod cgroup doesen't already exist this method creates it.
+	EnsureExists(*api.Pod) error
+
+	Exists(*api.Pod) bool
+
+	//Destroy takes a pod as argument and destorys the pod's container.
+	Destroy(*api.Pod) error
+}
+
+// CgroupSubsystems holds information about the mounted cgroup subsytems
+type CgroupSubsystems struct {
+	// Cgroup subsystem mounts.
+	// e.g.: "/sys/fs/cgroup/cpu" -> ["cpu", "cpuacct"]
+	Mounts []libcontainercgroups.Mount
+
+	// Cgroup subsystem to their mount location.
+	// e.g.: "cpu" -> "/sys/fs/cgroup/cpu"
+	MountPoints map[string]string
 }

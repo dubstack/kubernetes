@@ -32,14 +32,14 @@ import (
 type cgroupManagerImpl struct {
 	// subsystems holds information about all the
 	// mounted cgroup subsytems on the node
-	subsystems *cgroupSubsystems
+	subsystems *CgroupSubsystems
 }
 
 // Make sure that cgroupManagerImpl implements the CgroupManager interface
 var _ CgroupManager = &cgroupManagerImpl{}
 
 // NewCgroupManager is a factory method that returns a CgroupManager
-func NewCgroupManager(cs *cgroupSubsystems) CgroupManager {
+func NewCgroupManager(cs *CgroupSubsystems) CgroupManager {
 	return &cgroupManagerImpl{
 		subsystems: cs,
 	}
@@ -48,8 +48,8 @@ func NewCgroupManager(cs *cgroupSubsystems) CgroupManager {
 // Exists checks if all subsystem cgroups already exist
 func (m *cgroupManagerImpl) Exists(name string) bool {
 	// Get map of all cgroup paths on the system for the particular cgroup
-	cgroupPaths := make(map[string]string, len(m.subsystems.mountPoints))
-	for key, val := range m.subsystems.mountPoints {
+	cgroupPaths := make(map[string]string, len(m.subsystems.MountPoints))
+	for key, val := range m.subsystems.MountPoints {
 		cgroupPaths[key] = path.Join(val, name)
 	}
 
@@ -70,8 +70,8 @@ func (m *cgroupManagerImpl) Destroy(cgroupConfig *CgroupConfig) error {
 	name := cgroupConfig.Name
 
 	// Get map of all cgroup paths on the system for the particular cgroup
-	cgroupPaths := make(map[string]string, len(m.subsystems.mountPoints))
-	for key, val := range m.subsystems.mountPoints {
+	cgroupPaths := make(map[string]string, len(m.subsystems.MountPoints))
+	for key, val := range m.subsystems.MountPoints {
 		cgroupPaths[key] = path.Join(val, name)
 	}
 
@@ -100,7 +100,7 @@ type subsystem interface {
 }
 
 // Cgroup subsystems we currently support
-var supportedSubsystems []subsystem = []subsystem{
+var supportedSubsystems = []subsystem{
 	&cgroupfs.MemoryGroup{},
 	&cgroupfs.CpuGroup{},
 }
