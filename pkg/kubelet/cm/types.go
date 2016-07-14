@@ -76,7 +76,7 @@ type PodContainerManager interface {
 	// EnsureExists takes a pod as argument and makes sure that
 	// pod cgroup exists if qos cgroup hierarchy flag is enabled.
 	// If the pod cgroup doesen't already exist this method creates it.
-	EnsureExists(*api.Pod, []*api.Pod) error
+	EnsureExists(*api.Pod) error
 
 	Exists(*api.Pod) bool
 

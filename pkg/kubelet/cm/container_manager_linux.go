@@ -189,12 +189,10 @@ func NewContainerManager(mountUtil mount.Interface, cadvisorInterface cadvisor.I
 		return &containerManagerImpl{}, fmt.Errorf("invalid configuration: CgroupsPerQOS was specified and cgroup root was not specified. To enable the QoS cgroup hierarchy you need to specify a valid cgroupsRoot")
 	}
 	subsystems, err := getCgroupSubsystems()
-	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK NewContainerManager was called")
-	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK %v", subsystems)
-
 	if err != nil {
 		return &containerManagerImpl{}, fmt.Errorf("Failed to get mounted subsystems: %v", err)
 	}
+
 	return &containerManagerImpl{
 		cadvisorInterface: cadvisorInterface,
 		mountUtil:         mountUtil,
@@ -207,15 +205,12 @@ func NewContainerManager(mountUtil mount.Interface, cadvisorInterface cadvisor.I
 // If qosCgroups are enabled then it returns the general pod container manager
 // otherwise it returns a manager no-op which does nothing
 func (cm *containerManagerImpl) NewPodContainerManager() PodContainerManager {
-	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK PodContainerManager was called")
-	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK cgroups per qos : %v", cm.NodeConfig.CgroupsPerQOS)
-	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK top level qos containers created : %v", cm.qosContainers)
-	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK Node Info : %v", cm.nodeInfo)
 	if cm.NodeConfig.CgroupsPerQOS {
 		return &podContainerManagerImpl{
 			qosContainersInfo: cm.qosContainers,
 			nodeInfo:          cm.nodeInfo,
-			subsystems:        cm.subsystems,
+			qosPolicy:         CreatePodQOSPolicyMap(),
+			cgroupManager:     NewCgroupManager(cm.subsystems),
 		}
 	}
 	return &podContainerManagerNoop{

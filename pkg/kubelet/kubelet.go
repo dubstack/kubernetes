@@ -1929,9 +1929,7 @@ func (kl *Kubelet) syncPod(o syncPodOptions) error {
 			podSt, _ := kl.statusManager.GetPodStatus(pod.UID)
 			glog.Infof("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA Pod Status :%v", podSt)
 		}
-		allPods := kl.getActivePods()
-		glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK Number of active pods %v", len(allPods))
-		pcm.EnsureExists(pod, allPods)
+		pcm.EnsureExists(pod)
 	}
 	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK We are done")
 

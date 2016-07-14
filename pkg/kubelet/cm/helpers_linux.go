@@ -73,9 +73,8 @@ func getCgroupSubsystems() (*cgroupSubsystems, error) {
 	}, nil
 }
 
-// GetPodResourceRequest returns the pod requests for the supported resources
-// Pod request is defined as the summation of resource requests of all containers
-// in the pod.
+// GetPodResourceRequest returns the pod requests for the supported resources.
+// Pod request is the summation of resource requests of all containers in the pod.
 func GetPodResourceRequests(pod *api.Pod) api.ResourceList {
 	requests := api.ResourceList{}
 	zeroQuantity := resource.MustParse("0")
@@ -97,7 +96,7 @@ func GetPodResourceRequests(pod *api.Pod) api.ResourceList {
 }
 
 // GetPodResourceLimits returns the pod limits for the supported resources
-// Pod limit is defined as the summation of resource limits of all containers
+// Pod limit is the summation of resource limits of all containers
 // in the pod. If limit for a particular resource is not specified for
 // even a single container then we return the node resource capacity
 // as the pod limit for the particular resource.

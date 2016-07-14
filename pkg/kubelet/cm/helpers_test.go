@@ -19,22 +19,10 @@ package cm
 import (
 	"testing"
 
-	libcontainerconfigs "github.com/opencontainers/runc/libcontainer/configs"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/resource"
-	"k8s.io/kubernetes/pkg/kubelet/cm"
-	kubetypes "k8s.io/kubernetes/pkg/types"
 )
-
-// getDefaultQOSContainersInfo returns the default top level QOS containers name.
-func getDefaultQOSContainersInfo() cm.QOSContainersInfo {
-	return cm.QOSContainersInfo{
-		GuaranteedContainerName: "/",
-		BestEffortContainerName: "/BestEffort",
-		BurstableContainerName:  "/Burstable",
-	}
-}
 
 // getResourceRequirements returns a ResourceRequirements object
 func getResourceRequirements(requests, limits api.ResourceList) api.ResourceRequirements {
@@ -66,19 +54,6 @@ func newPod(name string, containers []api.Container) *api.Pod {
 	}
 }
 
-// newPodWithUID creates and returns a new pod
-// with the specified UID and containers
-func newPodWithUID(uid string, containers []api.Container) *api.Pod {
-	return &api.Pod{
-		ObjectMeta: api.ObjectMeta{
-			UID: kubetypes.UID(uid),
-		},
-		Spec: api.PodSpec{
-			Containers: containers,
-		},
-	}
-}
-
 // getResourceList returns a ResourceList with the
 // specified cpu and memory resource values
 func getResourceList(cpu, memory string) api.ResourceList {
@@ -103,37 +78,6 @@ func getNode(cpu, memory string) *api.Node {
 	return &api.Node{
 		Status: api.NodeStatus{
 			Capacity: capacity,
-		},
-	}
-}
-
-// getResourceConfig returns a libcontainer resource configuration
-// with the specified cpu and memory resource limits and shares
-func getResourceConfig(cpuShares, cpuQuota, memoryLimit string) *libcontainerconfigs.Resources {
-	res := &libcontainerconfigs.Resources{}
-	if cpuShares != "" {
-		cs := resource.MustParse(cpuShares)
-		res.CpuShares = cs.MilliValue()
-	}
-	if cpuQuota != "" {
-		cq := resource.MustParse(cpuQuota)
-		res.CpuQuota = cq.MilliValue()
-	}
-	if memoryLimit != "" {
-		m := resource.MustParse(memoryLimit)
-		res.Memory = m.Value()
-	}
-	return res
-}
-
-// getConfig returns a libcontainer configs object with the
-// specified cgroup configuration
-func getConfig(name, parent, cpuShares, cpuQuota, memoryLimit string) *libcontainerconfigs.Config {
-	return &libcontainerconfigs.Config{
-		Cgroups: &libcontainerconfigs.Cgroup{
-			Name:      name,
-			Parent:    parent,
-			Resources: getResourceConfig(cpuShares, cpuQuota, memoryLimit),
 		},
 	}
 }

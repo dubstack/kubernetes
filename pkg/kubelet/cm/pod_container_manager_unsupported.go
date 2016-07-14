@@ -1,7 +1,7 @@
 // +build !linux
 
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright 2016 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ func (m *unsupportedPodContainerManager) Exists(_ *api.Pod) bool {
 	return true
 }
 
-func (m *unsupportedPodContainerManager) EnsureExists(_ *api.Pod, _ []*api.Pod) error {
+func (m *unsupportedPodContainerManager) EnsureExists(_ *api.Pod) error {
 	return nil
 }
 

@@ -14,36 +14,66 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+package cm
+
 import (
-	"github.com/opencontainers/runc/libcontainer/configs"
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/kubelet/cm"
+	"k8s.io/kubernetes/pkg/api/resource"
+	"k8s.io/kubernetes/pkg/kubelet/qos"
 )
 
-func CreatePodQOSPolicyMap() map[cm.QOSClass]func(api.ResourceList, api.ResourceList) *configs.Resources {
-	return map[cm.QOSClass]func(api.ResourceList, api.ResourceList) *configs.Resources{
-		cm.GuaranteedQOS: GuaranteedPodQOSPolicy,
-		cm.BurstableQOS:  BurstablePodQOSPolicy,
-		cm.BestEffortQOS: BestEffortPodQOSPolicy,
+func getValue(q resource.Quantity) *int64 {
+	val := q.Value()
+	return &val
+}
+
+func getMilliValue(q resource.Quantity) *int64 {
+	val := q.MilliValue()
+	return &val
+}
+
+func getValueFromQuantityPointer(q *resource.Quantity) *int64 {
+	val := q.Value()
+	return &val
+}
+
+func getMilliValueFromQuantityPointer(q *resource.Quantity) *int64 {
+	val := q.MilliValue()
+	return &val
+}
+
+// 2 is the lowest value of CpuShares, and our standard is milliCPUs
+// So we set the Best Effort pods cgroup
+const (
+	minimalCpuShares = "2m"
+)
+
+func CreatePodQOSPolicyMap() map[qos.QOSClass]func(api.ResourceList, api.ResourceList) *ResourceConfig {
+	return map[qos.QOSClass]func(api.ResourceList, api.ResourceList) *ResourceConfig{
+		qos.Guaranteed: GuaranteedPodQOSPolicy,
+		qos.Burstable:  BurstablePodQOSPolicy,
+		qos.BestEffort: BestEffortPodQOSPolicy,
 	}
 }
 
-func GuaranteedPodQOSPolicy(requests api.ResourceList, limits api.ResourceList) *configs.Resources {
-	return &configs.Resources{
-		CpuShares: requests.Cpu().MilliValue(),
-		CpuQuota:  limits.Cpu().MilliValue(),
-		Memory:    limits.Memory().Value(),
+func GuaranteedPodQOSPolicy(requests api.ResourceList, limits api.ResourceList) *ResourceConfig {
+	return &ResourceConfig{
+		CpuShares: getMilliValueFromQuantityPointer(requests.Cpu()),
+		CpuQuota:  getMilliValueFromQuantityPointer(limits.Cpu()),
+		Memory:    getValueFromQuantityPointer(limits.Memory()),
 	}
 }
 
-func BurstablePodQOSPolicy(requests api.ResourceList, limits api.ResourceList) *configs.Resources {
-	return &configs.Resources{
-		CpuShares: requests.Cpu().MilliValue(),
-		CpuQuota:  limits.Cpu().MilliValue(),
-		Memory:    limits.Memory().Value(),
+func BurstablePodQOSPolicy(requests api.ResourceList, limits api.ResourceList) *ResourceConfig {
+	return &ResourceConfig{
+		CpuShares: getMilliValueFromQuantityPointer(requests.Cpu()),
+		CpuQuota:  getMilliValueFromQuantityPointer(limits.Cpu()),
+		Memory:    getValueFromQuantityPointer(limits.Memory()),
 	}
 }
 
-func BestEffortPodQOSPolicy(requests api.ResourceList, limits api.ResourceList) *configs.Resources {
-	return &configs.Resources{}
+func BestEffortPodQOSPolicy(requests api.ResourceList, limits api.ResourceList) *ResourceConfig {
+	return &ResourceConfig{
+		CpuShares: getMilliValue(resource.MustParse(minimalCpuShares)),
+	}
 }

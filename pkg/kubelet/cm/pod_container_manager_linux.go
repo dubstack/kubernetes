@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright 2016 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,8 +20,6 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/golang/glog"
-
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/kubelet/qos"
 )
@@ -34,12 +32,18 @@ const (
 // It is the general implementation which allows pod level container
 // management if qos Cgroup is enabled.
 type podContainerManagerImpl struct {
-	// nodeInfo holds information about the node
+	// nodeInfo stores information about the node resource capacity
 	nodeInfo *api.Node
 	// qosContainersInfo hold absolute paths of the top level qos containers
 	qosContainersInfo QOSContainersInfo
-	// subsystems holds all info of all the mounted cgroup subsytems on the node
-	subsystems *cgroupSubsystems
+	// cgroupManager is the cgroup Manager Object responsible for managing all
+	// pod cgroups. It also stores the mounted cgroup subsystems
+	cgroupManager CgroupManager
+	// qosPolicy stores the QOS policy of pod resource parameter updates
+	// Key is the QOSClass and value is a function which takes resource
+	// requests and limits of the pod and returns the cgroup resource
+	// config of the pod
+	qosPolicy map[qos.QOSClass]func(api.ResourceList, api.ResourceList) *ResourceConfig
 }
 
 // Make sure that podContainerManagerImpl implements the PodContainerManager interface
@@ -47,26 +51,37 @@ var _ PodContainerManager = &podContainerManagerImpl{}
 
 // applyLimits sets pod cgroup resource limits
 // It also updates the resource limits on top level qos containers.
-func (m *podContainerManagerImpl) applyLimits(pod *api.Pod, allPods []*api.Pod) error {
-	// This function will house the logic for setting the resource parameters
-	// on the pod container config and updating top level qos container configs
+func (m *podContainerManagerImpl) applyLimits(pod *api.Pod) error {
+	podContainerName := m.GetPodContainerName(pod)
+	podQos := qos.GetPodQOS(pod)
+	// Determine the resources request and limits of the pod
+	// Its the sum of requests/limits of all the containers in the pod
+	// Note: if the limit is not specified for all the containers in the pod
+	// we use the Node Resource capacity as the default limit for the pod
+	podRequests := GetPodResourceRequests(pod)
+	podLimits := GetPodResourceLimits(pod, m.nodeInfo)
+	resourceConfig := m.qosPolicy[podQos](podRequests, podLimits)
+	containerConfig := &CgroupConfig{
+		Name:               podContainerName,
+		ResourceParameters: resourceConfig,
+	}
+	if err := m.cgroupManager.Update(containerConfig); err != nil {
+		return fmt.Errorf("Failed to update container for %v : %v", podContainerName, err)
+	}
 	return nil
 }
 
 // Exists checks if the pod's cgroup already exists
 func (m *podContainerManagerImpl) Exists(pod *api.Pod) bool {
 	podContainerName := m.GetPodContainerName(pod)
-	cm := NewCgroupManager(m.subsystems)
-	return cm.Exists(podContainerName)
+	return m.cgroupManager.Exists(podContainerName)
 }
 
 // EnsureExists takes a pod as argument and makes sure that
 // pod cgroup exists if qos cgroup hierarchy flag is enabled.
 // If the pod level container doesen't already exist it is created.
-func (m *podContainerManagerImpl) EnsureExists(pod *api.Pod, allPods []*api.Pod) error {
+func (m *podContainerManagerImpl) EnsureExists(pod *api.Pod) error {
 	podContainerName := m.GetPodContainerName(pod)
-	glog.Infof("BAJBDHJKABDJKBAKBDKJBAKBK %v %v", podContainerName)
-	cm := NewCgroupManager(m.subsystems)
 	// check if container already exist
 	alreadyExists := m.Exists(pod)
 	if !alreadyExists {
@@ -75,13 +90,13 @@ func (m *podContainerManagerImpl) EnsureExists(pod *api.Pod, allPods []*api.Pod)
 			Name:               podContainerName,
 			ResourceParameters: &ResourceConfig{},
 		}
-		if err := cm.Create(containerConfig); err != nil {
+		if err := m.cgroupManager.Create(containerConfig); err != nil {
 			return fmt.Errorf("Failed to created container for %v : %v", podContainerName, err)
 		}
 	}
 	// Apply appropriate resource limits on the pod container
 	// Top level qos containers limits are also updated.
-	if err := m.applyLimits(pod, allPods); err != nil {
+	if err := m.applyLimits(pod); err != nil {
 		return fmt.Errorf("Failed to apply resource limits on container for %v : %v", podContainerName, err)
 	}
 	return nil
@@ -107,7 +122,6 @@ func (m *podContainerManagerImpl) GetPodContainerName(pod *api.Pod) string {
 
 // Destroy destroys the pod container cgroup paths
 func (m *podContainerManagerImpl) Destroy(pod *api.Pod) error {
-	cm := NewCgroupManager(m.subsystems)
 	// get pod's container name
 	podContainerName := m.GetPodContainerName(pod)
 	// containerConfig object stores the cgroup specifications
@@ -115,7 +129,7 @@ func (m *podContainerManagerImpl) Destroy(pod *api.Pod) error {
 		Name:               podContainerName,
 		ResourceParameters: &ResourceConfig{},
 	}
-	if err := cm.Destroy(containerConfig); err != nil {
+	if err := m.cgroupManager.Destroy(containerConfig); err != nil {
 		return fmt.Errorf("Failed to delete cgroup paths for %v : %v", podContainerName, err)
 	}
 	return nil
@@ -133,7 +147,7 @@ var _ PodContainerManager = &podContainerManagerNoop{}
 func (m *podContainerManagerNoop) Exists(_ *api.Pod) bool {
 	return true
 }
-func (m *podContainerManagerNoop) EnsureExists(_ *api.Pod, _ []*api.Pod) error {
+func (m *podContainerManagerNoop) EnsureExists(_ *api.Pod) error {
 	return nil
 }
 
