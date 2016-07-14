@@ -2039,6 +2039,45 @@ func (kl *Kubelet) getPullSecretsForPod(pod *api.Pod) ([]api.Secret, error) {
 	return pullSecrets, nil
 }
 
+// cleanupOrphanedPodCgroups removes the Cgroups of pods that should not be
+// running and that have no containers running and whose volumes have been cleanedup.
+func (kl *Kubelet) cleanupOrphanedPodCgroups(
+	pods []*api.Pod, runningPods []*kubecontainer.Pod) error {
+	allPods := sets.NewString()
+	for _, pod := range pods {
+		allPods.Insert(string(pod.UID))
+	}
+	for _, pod := range runningPods {
+		allPods.Insert(string(pod.ID))
+	}
+
+	found, err := kl.listPodsFromCgroupMounts()
+	if err != nil {
+		return err
+	}
+	errlist := []error{}
+	for _, uid := range found {
+		if allPods.Has(string(uid)) {
+			continue
+		}
+		if podVolumesExist := kl.podVolumesExist(uid); podVolumesExist {
+			// If volumes have not been unmounted/detached, do not delete directory.
+			// Doing so may result in corruption of data.
+			glog.V(3).Infof("Orphaned pod %q found, but volumes are not cleaned up, Skipping cgroups deletion; err: %v", uid, err)
+			continue
+		}
+
+		glog.V(3).Infof("Orphaned pod %q found, removing pod cgroups", uid)
+		pcm := kl.containerManager.NewPodContainerManager()
+		podToKill := kl.podManager.GetPodByUID(uid)
+		if err := pcm.Destroy(podToKill); err != nil {
+			glog.Infof("Failed to remove orphaned pod %q cgroups; err: %v", uid, err)
+			errlist = append(errlist, err)
+		}
+	}
+	return utilerrors.NewAggregate(errlist)
+}
+
 // cleanupOrphanedPodDirs removes the volumes of pods that should not be
 // running and that have no containers running.
 func (kl *Kubelet) cleanupOrphanedPodDirs(
