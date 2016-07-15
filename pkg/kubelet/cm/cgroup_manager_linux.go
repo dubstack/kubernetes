@@ -144,11 +144,18 @@ func (m *cgroupManagerImpl) Update(cgroupConfig *CgroupConfig) error {
 		resources.CpuQuota = *resourceConfig.CpuQuota
 	}
 
+	// Get map of all cgroup paths on the system for the particular cgroup
+	cgroupPaths := make(map[string]string, len(m.subsystems.MountPoints))
+	for key, val := range m.subsystems.MountPoints {
+		cgroupPaths[key] = path.Join(val, name)
+	}
+
 	// Initialize libcontainer's cgroup config
 	libcontainerCgroupConfig := &libcontainerconfigs.Cgroup{
 		Name:      path.Base(name),
 		Parent:    path.Dir(name),
 		Resources: resources,
+		Paths:     cgroupPaths,
 	}
 
 	if err := setSupportedSubsytems(libcontainerCgroupConfig); err != nil {

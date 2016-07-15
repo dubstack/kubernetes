@@ -83,8 +83,12 @@ type PodContainerManager interface {
 
 	Exists(*api.Pod) bool
 
-	//Destroy takes a pod as argument and destorys the pod's container.
-	Destroy(*api.Pod) error
+	// SetResources sets the pod cgroup resource parameters to the one
+	// specified by the ResourceConfig
+	SetResources(string, *ResourceConfig) error
+
+	//Destroy takes a pod Cgroup name as argument and destorys the pod's container.
+	Destroy(string) error
 }
 
 // CgroupSubsystems holds information about the mounted cgroup subsytems

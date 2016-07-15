@@ -35,6 +35,10 @@ func (m *podContainerManagerStub) GetPodContainerName(_ *api.Pod) string {
 	return ""
 }
 
-func (m *podContainerManagerStub) Destroy(_ *api.Pod) error {
+func (m *podContainerManagerStub) SetResources(_ string, _ *ResourceConfig) error {
+	return nil
+}
+
+func (m *podContainerManagerStub) Destroy(_ string) error {
 	return nil
 }
