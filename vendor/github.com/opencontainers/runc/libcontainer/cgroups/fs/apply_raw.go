@@ -341,8 +341,10 @@ func (raw *cgroupData) join(subsystem string) (string, error) {
 	if err := os.MkdirAll(path, 0755); err != nil {
 		return "", err
 	}
-	if err := writeFile(path, CgroupProcesses, strconv.Itoa(raw.pid)); err != nil {
-		return "", err
+	if raw.pid != -1 {
+		if err := writeFile(path, CgroupProcesses, strconv.Itoa(raw.pid)); err != nil {
+			return "", err
+		}
 	}
 	return path, nil
 }

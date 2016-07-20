@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
+	
 	"github.com/docker/go-units"
 )
 
@@ -326,9 +326,11 @@ func PathExists(path string) bool {
 func EnterPid(cgroupPaths map[string]string, pid int) error {
 	for _, path := range cgroupPaths {
 		if PathExists(path) {
-			if err := ioutil.WriteFile(filepath.Join(path, "cgroup.procs"),
-				[]byte(strconv.Itoa(pid)), 0700); err != nil {
-				return err
+			if pid != -1 {
+				if err := ioutil.WriteFile(filepath.Join(path, "cgroup.procs"),
+					[]byte(strconv.Itoa(pid)), 0700); err != nil {
+					return err
+				}
 			}
 		}
 	}

@@ -67,8 +67,10 @@ func (s *CpusetGroup) ApplyDir(dir string, cgroup *configs.Cgroup, pid int) erro
 	}
 	// because we are not using d.join we need to place the pid into the procs file
 	// unlike the other subsystems
-	if err := writeFile(dir, "cgroup.procs", strconv.Itoa(pid)); err != nil {
-		return err
+	if pid != -1 {
+		if err := writeFile(dir, "cgroup.procs", strconv.Itoa(pid)); err != nil {
+			return err
+		}
 	}
 
 	return nil

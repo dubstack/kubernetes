@@ -186,7 +186,7 @@ func (m *cgroupManagerImpl) Create(cgroupConfig *CgroupConfig) error {
 	// It creates cgroup files for each subsytems and writes the pid
 	// in the tasks file. We use the function to create all the required
 	// cgroup files but not attach any "real" pid to the cgroup.
-	if err := fsCgroupManager.Apply(0); err != nil {
+	if err := fsCgroupManager.Apply(-1); err != nil {
 		return fmt.Errorf("Failed to apply cgroup config for %v: %v", name, err)
 	}
 	return nil
